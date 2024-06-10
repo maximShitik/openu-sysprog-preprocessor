@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #define MAX_LINE 80
 #define MAX_LABEL 32
 #define SPACES " \t\n\r"
@@ -13,14 +14,15 @@ struct sep_line
     int line_number;
 };
 
-/*removing spaces and skipping to the next word*/
+/**
+ * Function to split a line into words based on spaces.
+ * Removes leading spaces and stops at the first null character.
+ */
 struct sep_line next_word(char *line)
 {
-    int counter;
-    int i;
+    struct sep_line separated = {0};
+    int counter = 0;
     char *sep;
-    struct sep_line seperated = {0};
-    counter = 0;
 
     while (isspace(*line))
     {
@@ -29,17 +31,26 @@ struct sep_line next_word(char *line)
 
     if (*line == '\0')
     {
-        return seperated;
+        return separated;
     }
 
     do
     {
-        seperated.line[counter++] = line;
-        sep = strpbrk(line, SPACES);
+        separated.line[counter++] = line;
+        sep = strpbrk(line, SPACES ",");
         if (sep != NULL)
         {
-            *sep = '\0';
-            sep++;
+            if (*sep == ',')
+            {
+                *sep = '\0';
+                sep++;
+                separated.line[counter++] = ",";
+            }
+            else
+            {
+                *sep = '\0';
+                sep++;
+            }
 
             while (isspace(*sep))
             {
@@ -53,15 +64,14 @@ struct sep_line next_word(char *line)
             line = sep;
         }
     } while (sep != NULL);
-    seperated.line_number = counter;
-    return seperated;
+
+    separated.line_number = counter;
+    return separated;
 }
 
 /**
- * @brief
- *
- * @param str
- * @return int 0= no uppercase, 1= uppercase
+ * Checks if a string contains any uppercase letters.
+ * Returns 1 if it does, 0 otherwise.
  */
 int contains_uppercase(const char *str)
 {
@@ -77,17 +87,19 @@ int contains_uppercase(const char *str)
 }
 
 /**
- * @brief
- *
- * @param line
- * @return int, 0 = command name ,1 = not system name ,2 =  inst name 3 = register name
+ * Identifies the type of system name (command, instruction, or register).
+ * Returns:
+ * 0 - command name
+ * 1 - not a system name
+ * 2 - instruction name
+ * 3 - register name
  */
-int system_names(char *line) /*פשוט בודק באופן כללי מה זה השם הזה*/
+int system_names(char *line)
 {
-    int i;
     char *command_names[] = {"mov", "cmp", "add", "sub", "not", "clr", "lea", "inc", "dec", "jmp", "bne", "red", "prn", "jsr", "rts", "stop"};
     char *inst_names[] = {"data", "string", "entry", "extrn"};
     char *registers[] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"};
+    int i;
     for (i = 0; i < sizeof(command_names) / sizeof(command_names[0]); i++)
     {
         if (strcmp(line, command_names[i]) == 0)
@@ -95,6 +107,7 @@ int system_names(char *line) /*פשוט בודק באופן כללי מה זה �
             return 0;
         }
     }
+
     for (i = 0; i < sizeof(inst_names) / sizeof(inst_names[0]); i++)
     {
         if (strcmp(line, inst_names[i]) == 0)
@@ -102,6 +115,7 @@ int system_names(char *line) /*פשוט בודק באופן כללי מה זה �
             return 2;
         }
     }
+
     for (i = 0; i < sizeof(registers) / sizeof(registers[0]); i++)
     {
         if (strcmp(line, registers[i]) == 0)
@@ -109,143 +123,169 @@ int system_names(char *line) /*פשוט בודק באופן כללי מה זה �
             return 3;
         }
     }
+
     return 1;
 }
 
 /**
- * @brief
- *
- * @param line
- * @return int 0 = string converted to an integer, 1 = Couldn't convert to int
-
-
+ * Checks if a string can be converted to an integer.
+ * Returns 1 if it can, 0 otherwise.
  */
 int is_int(char *line)
 {
-    /* Check for optional sign at the beginning*/
     if (*line == '+' || *line == '-' || *line == '#')
     {
         line++;
     }
+
     if (strchr(line, '.') != NULL)
-    { /*checking if the string is a float*/
+    {
         return 0;
     }
 
-    /* Check if the rest of the string is a valid integer*/
     char *endptr;
     strtol(line, &endptr, 10);
 
-    /* Check if the whole string was successfully converted to an integer*/
-    if (*endptr == '\0')
-    {
-        return 1; /* The whole string was successfully converted to an integer */
-    }
-    else
-    {
-        return 0; /* Couldn't convert to int */
-    }
+    return *endptr == '\0';
 }
 
 /**
- * @brief
- *
- * @param line
- * @return int 0 = not a string, 1 = is a string
-
+ * Checks if a string is enclosed in double quotes.
+ * Returns 1 if it is, 0 otherwise.
  */
 int is_string(char *line)
 {
-    if (line[0] == '"' && line[strlen(line) - 1] == '"')
-    {
-        return 1;
-    }
-    else
-    {
-        return 0;
-    }
+    return line[0] == '"' && line[strlen(line) - 1] == '"';
+}
+
+int is_note(char *line)
+{
+    return line[0] == ';';
 }
 
 /**
- * @brief
- *
- * @param line
- * @return int 1 = is a valid label, 0 = not a valid label
-
+ * Checks if a string is a valid label.
+ * Returns 1 if it is, 0 otherwise.
  */
 int is_label(char *line)
 {
-
-    char *line_copy;
     int result;
-    if (strlen(line) < MAX_LABEL && line[strlen(line) - 1] == ':')
+    char *line_copy;
+    if (strlen(line) >= MAX_LABEL || line[strlen(line) - 1] != ':')
     {
-        /* Create a copy of the line to work on */
-        line_copy = strdup(line);
-        if (line_copy == NULL)
+        return 0;
+    }
+
+    line_copy = strdup(line);
+    if (line_copy == NULL)
+    {
+        return 0;
+    }
+
+    line_copy[strlen(line_copy) - 1] = '\0';
+    result = system_names(line_copy);
+
+    free(line_copy);
+
+    return result == 1;
+}
+
+/**
+ * Checks if a string is a valid instruction.
+ * Returns:
+ * 0 - error
+ * 1 - instruction
+ * 2 - not an instruction
+ */
+int is_instruction(char *line)
+{
+    if (line[0] != '.')
+    {
+        return 2;
+    }
+
+    char *line_copy = strdup(line + 1);
+    if (line_copy == NULL)
+    {
+        return 0;
+    }
+
+    if (contains_uppercase(line_copy))
+    {
+        /*****need to add error*/
+        free(line_copy);
+        return 0;
+    }
+
+    int result = system_names(line_copy);
+    free(line_copy);
+
+    return result == 2 ? 1 : 0;
+}
+
+/**
+ * Checks if a string is an entry or extern instruction.
+ * Returns:
+ * 0 - error
+ * 1 - entry
+ * 2 - extern
+ * 3 - not an instruction
+ */
+int extern_and_entry(char *line)
+{
+    int result;
+    char *line_copy;
+    if (line[0] != '.')
+    {
+        return 3;
+    }
+
+    line_copy = strdup(line + 1);
+    if (line_copy == NULL)
+    {
+        return 0;
+    }
+
+    if (contains_uppercase(line_copy))
+    {
+        free(line_copy);
+        return 0;
+    }
+
+    result = system_names(line_copy);
+    if (result == 2)
+    {
+        if (strcmp(line_copy, "entry") == 0)
         {
-
-            return 0;
-        }
-
-        line_copy[strlen(line_copy) - 1] = '\0'; /* Remove the trailing colon */
-        result = system_names(line_copy);        /*checking we didn't use any system saved name*/
-
-        free(line_copy); /* free the memory */
-
-        if (result != 1) /*if we used invalid name*/
-        {
-            return 0;
-        }
-
-        else
-        {
+            free(line_copy);
             return 1;
         }
+        if (strcmp(line_copy, "extern") == 0)
+        {
+            free(line_copy);
+            return 2;
+        }
     }
+
+    free(line_copy);
     return 0;
 }
+
+/**
+ * Resets a string array to NULL values.
+ */
 void reset_string_array(char **array, int size)
 {
-    for (int i = 0; i < size; i++)
+    int i;
+    for (i = 0; i < size; i++)
     {
         array[i] = NULL;
     }
 }
 
-int is_instruction(char *line)
-{
-    char *line_copy;
-    int result;
-    if (line[0] == '.')
-    {
-        /* Create a copy of the line to work on */
-        line_copy = strdup(line);
-        if (line_copy == NULL)
-        {
-
-            return 0; /*error*/
-        }
-
-        memmove(line_copy, line_copy + 1, strlen(line_copy));
-        if (contains_uppercase(line_copy))
-        {
-            return 0; /*need to add error*/
-        }
-        result = system_names(line_copy); /*checking we didn't use any system saved name*/
-        free(line_copy);                  /* free the memory */
-        if (result == 2)
-        {
-            return 1;
-        }
-        else
-        {
-            return 0; /*error */
-        }
-    }
-    return 2;
-}
-
+/**
+ * Resets an AST (Abstract Syntax Tree) node to its default state.
+ */
 void reset_ast(struct ast *node)
 {
     int i;
@@ -268,42 +308,142 @@ void reset_ast(struct ast *node)
     node->ARE.ARE_type = A;
 }
 
-void line_type_check(struct sep_line sep, struct ast *ast)
+/**
+ * Determines the type of line and updates the AST node accordingly.
+ */
+struct ast line_type_check(struct sep_line sep, struct ast *ast)
 {
     int i;
-    int result;
-    char res;
-    for (i = 0; i < sizeof(sep); i++)
+    int entry_extern_result;
+    i = 0;
+    if (sep.line[i] == NULL)
     {
+        ast->line_type = empty_line;
+        return *ast;
+    }
+    if (is_note(sep.line[0]))
+    {
+        ast->line_type = note_line;
+        return *ast;
+    }
 
-        if (is_label(sep.line[i]) == 0 || system_names(sep.line[i]) == 0)
+    if (!is_label(sep.line[i]))
+    {
+        entry_extern_result = extern_and_entry(sep.line[i]);
+        if (entry_extern_result == 1)
         {
-            if (system_names(sep.line[i]) == 1)
-            {
-            }
+            ast->line_type = inst_line;
+            ast->line_type_data.inst.inst_type = entry;
+        }
+        else if (entry_extern_result == 2)
+        {
+            ast->line_type = inst_line;
+            ast->line_type_data.inst.inst_type = extrn;
+        }
+        else
+        {
+            ast->line_type = error_line;
+            ast->error.line_number = 1;
+            strcpy(ast->error.error, "invalid label name");
+            return *ast;
         }
     }
+    else if (is_label(sep.line[i]) == 1)
+    {
+        ast->line_type = inst_line;
+        ast->line_type_data.inst.inst_type = lable;
+
+        if (system_names(sep.line[++i]) == 0)
+        {
+            ast->line_type = command_line;
+        }
+    }
+    else if (is_instruction(sep.line[i]) == 1)
+    {
+        ast->line_type = inst_line;
+    }
+    else if (system_names(sep.line[i]) == 0)
+    {
+        ast->line_type = command_line;
+    }
+    else
+    {
+        ast->line_type = error_line;
+        ast->error.line_number = 1;
+        strcpy(ast->error.error, "invalid first name");
+        return *ast;
+    }
+    return *ast;
 }
-struct ast parese_line(char *line)
+
+struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
 {
-    struct sep_line seperated;
-    int i;
+
+    if (sep.line_number < 2)
+    {
+        ast->line_type = error_line;
+        ast->error.line_number = 1;
+        strcpy(ast->error.error, "error-missing label name");
+        return *ast;
+    }
+    if (sep.line_number > 2)
+    {
+        ast->line_type = error_line;
+        ast->error.line_number = 1;
+        strcpy(ast->error.error, "error-too many arguments");
+        return *ast;
+    }
+    ast->line_type_data.inst.inst_opt.label[0] = sep.line[1];
+    ast->line_type_data.inst.inst_opt.label[1] = NULL;
+    
+    return *ast;
+}
+
+void line_type_data_set(struct sep_line sep, struct ast *ast)
+{
+    if (ast->line_type == inst_line)
+    {
+        if (ast->line_type_data.inst.inst_type == entry || ast->line_type_data.inst.inst_type == extrn)
+        {
+            set_entry_extern(ast, sep);
+        }
+        
+    }
+}
+/**
+ * Parses a line and generates an AST node.
+ */
+struct ast parse_line(char *line)
+{
+    struct sep_line separated = next_word(line);
     struct ast ast;
     reset_ast(&ast);
-    seperated = next_word(line);
-    if (seperated.line_number == 0)
-    {
-        return ast;
-    }
-    /* 0 = command name ,1 = not system name ,2 =  inst name 3 = register name */
-    line_type_check(seperated, &ast);
 
+    line_type_check(separated, &ast);
+    line_type_data_set(separated, &ast);
     return ast;
 }
 
+/*test functions*/
+/**
+ * Tests the line_type_check function.
+ */
+void test_line_type_check()
+{
+    struct sep_line sep;
+    struct ast ast;
 
+    char line[50] = "  .entry MOVE ";
+    parse_line(line);
+}
 
+/**
+ * Main function to run all tests.
+ */
 int main()
 {
+
+    test_line_type_check();
+    printf("All tests completed.\n");
     return 0;
 }
