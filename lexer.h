@@ -5,21 +5,21 @@ typedef struct ast
 
     enum line_type
     {
-        
+
         error_line = 1,
-        note_line ,
-        inst_line ,
-        command_line ,
-        empty_line 
+        note_line,
+        inst_line,
+        command_line,
+        empty_line
 
     } line_type;
 
-    union
+    union line_type_data
     {
 
         struct inst
         {
-            enum
+            enum inst_type
             {
                 data = 1,
                 string,
@@ -79,7 +79,7 @@ typedef struct ast
         } command;
 
         int note;
-    }line_type_data;
+    } line_type_data;
     struct
     {
         char error[300];
