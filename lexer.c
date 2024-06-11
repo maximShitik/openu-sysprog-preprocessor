@@ -33,10 +33,13 @@ typedef enum
     true
 } bool;
 
+/*reset the ast but without error*/
+void error_found(struct ast *ast, char *error_message);
+
 /**
  * @brief Trimming the white spaces in the line.
- * 
- * @param str 
+ *
+ * @param str
  */
 void trim_whitespace(char *str)
 {
@@ -133,11 +136,6 @@ int contains_uppercase(const char *str)
 /**
  * Identifies the type of system name (command, instruction, or register).
  * Returns:
-
- * 1 - not a system name
- * 3 - instruction name
- * 4 - command name
- * 6 - register name
  */
 int system_names(char *line)
 {
@@ -178,9 +176,6 @@ int system_names(char *line)
  * @param line
  * @param ast
  * @return int false if the token is invalid,
- * 1 if it is a label,
- * 2 if it is an instruction,
- * 5 if it is a command
 
  */
 int process_token(char *line, struct ast *ast)
@@ -189,19 +184,12 @@ int process_token(char *line, struct ast *ast)
     char *line_copy;
     size_t len = strlen(line);
 
-    if (len >= MAX_LABEL)
-    {
-        return false;
-    }
-
     if (line[len - 1] == ':')
     {
         line_copy = (char *)malloc(len);
         if (line_copy == NULL)
         {
-            ast->line_type = error_line;
-            ast->error.line_number = 1;
-            strcpy(ast->error.error, "memory allocation error");
+            error_found(ast, "memory allocation error");
             return false;
         }
         strncpy(line_copy, line, len - 1);
@@ -216,17 +204,14 @@ int process_token(char *line, struct ast *ast)
         line_copy = (char *)malloc(len + 1);
         if (line_copy == NULL)
         {
-            ast->line_type = error_line;
-            ast->error.line_number = 1;
-            strcpy(ast->error.error, "memory allocation error");
+            error_found(ast, "memory allocation error");
             return false;
         }
         strcpy(line_copy, line + 1);
         if (contains_uppercase(line_copy))
         {
-            ast->line_type = error_line;
-            ast->error.line_number = 1;
-            strcpy(ast->error.error, "invalid instruction name");
+            error_found(ast, "error-invalid instruction name");
+
             free(line_copy);
             return false;
         }
@@ -234,24 +219,12 @@ int process_token(char *line, struct ast *ast)
 
         if (result == instruction)
         {
-            if (strcmp(line_copy, "entry") == 0)
-            {
-                free(line_copy);
-                return Entry;
-            }
-            if (strcmp(line_copy, "extern") == 0)
-            {
-                free(line_copy);
-                return Extrn;
-            }
             free(line_copy);
             return instruction; /*valid instruction*/
         }
         else if (result == true)
         {
-            ast->line_type = error_line;
-            ast->error.line_number = 1;
-            strcpy(ast->error.error, "invalid instruction name");
+            error_found(ast, "error-invalid instruction name");
             return false;
         }
     }
@@ -321,7 +294,7 @@ void reset_ast(struct ast *node)
     int i;
     i = 0;
     node->line_type = empty_line;
-    node->line_type_data.inst.inst_type = data;
+    node->line_type_data.inst.inst_type = 0;
     reset_string_array(node->line_type_data.inst.inst_opt.label, 32);
     reset_string_array(node->line_type_data.inst.inst_opt.string, 50);
     node->line_type_data.command.opcode = 0;
@@ -343,44 +316,48 @@ void reset_ast(struct ast *node)
     node->ARE.ARE_type = A;
 }
 
+void error_found(struct ast *ast, char *error_message)
+{
+    reset_ast(ast);
+    ast->line_type = error_line;
+    ast->error.line_number = 1;
+    strcpy(ast->error.error, error_message);
+}
+
 struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
 {
 
     if (sep.line_number < 2)
     {
-        ast->line_type = error_line;
-        ast->error.line_number = 1;
-        strcpy(ast->error.error, "error-missing label name");
+        error_found(ast, "error-missing label name");
         return *ast;
     }
     if (sep.line_number > 2)
     {
-        ast->line_type = error_line;
-        ast->error.line_number = 1;
-        strcpy(ast->error.error, "error-too many arguments");
+        error_found(ast, "error-too many arguments");
+
         return *ast;
     }
     ast->line_type_data.inst.inst_opt.label[0] = sep.line[0];
     ast->line_type_data.inst.inst_opt.label[1] = NULL;
-
+    strcmp(sep.line[0], "entry") == 0 ? (ast->line_type_data.inst.inst_type = entry,ast->ARE.ARE_type=R) : (ast->line_type_data.inst.inst_type = extrn,ast->ARE.ARE_type=E);
+    
     return *ast;
 }
 
 struct ast line_type(struct sep_line sep, struct ast *ast)
 {
-    if (sep.line_number == 0)
-    {
-        ast->line_type = error_line;
-        ast->error.line_number = 1;
-        strcpy(ast->error.error, "error-empty line");
-        return *ast;
-    }
     if (is_note(sep.line[0]))
     {
         ast->line_type_data.note = 1;
         ast->line_type = note_line;
         return *ast;
     }
+    if (process_token(sep.line[0], ast) == instruction)
+        {
+            ast->line_type = inst_line;
+            return *ast;
+        }
     if (process_token(sep.line[0], ast) == lable)
     {
         ast->line_type = inst_line;
@@ -397,6 +374,11 @@ struct ast line_type(struct sep_line sep, struct ast *ast)
     else if (process_token(sep.line[0], ast) == command)
     {
         ast->line_type = command_line;
+        return *ast;
+    }
+    else if(ast->line_type!=error_line)
+    {
+        error_found(ast, "error-undefinded line type");
         return *ast;
     }
     return *ast;
@@ -420,9 +402,7 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
         {
             if ((i + 1) < index.line_number && is_int(index.line[i + 1]))
             {
-                ast->line_type = error_line;
-                ast->error.line_number = 1;
-                strcpy(ast->error.error, "error-missing comma");
+                error_found(ast, "error-missing comma");
                 return *ast;
             }
 
@@ -432,38 +412,86 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
         {
             if ((i + 1) < index.line_number && strcmp(index.line[i + 1], ",") == 0)
             {
-                ast->line_type = error_line;
-                ast->error.line_number = 1;
-                strcpy(ast->error.error, "error-too many commas");
+                error_found(ast, "error-too many commas");
                 return *ast;
             }
             else
                 continue;
         }
+        else if ((i + 1) < index.line_number && (!is_int(index.line[i]) && strcmp(index.line[i + 1], ",") == 0))
+        {
+            error_found(ast, "error-comma befor first number");
+            return *ast;
+        }
+
+        else if (strcmp(index.line[sep.line_number - 1], ",") == 0)
+        {
+            error_found(ast, "error-comma after last number");
+            return *ast;
+        }
     }
     ast->line_type_data.inst.inst_type = data;
     return *ast;
 }
+
+struct ast set_string(struct ast *ast, struct sep_line sep)
+{
+    int i, j, k;
+    j = 0;
+    char *string_start;
+    size_t len;
+    int string_counter;
+    string_counter = 0;
+    for (i = 0; i < sep.line_number; i++)
+    {
+        if (is_string(sep.line[i]))
+        {
+            break;
+        }
+    }
+
+    if (i < sep.line_number && is_string(sep.line[i]))
+    {
+
+        string_start = sep.line[i] + 1;
+        len = strlen(string_start);
+        for (k = 0; k < len - 1; k++)
+        {
+            ast->line_type_data.inst.inst_opt.string[j] = (char *)malloc(2 * sizeof(char));
+            if (ast->line_type_data.inst.inst_opt.string[j] == NULL)
+            {
+                error_found(ast, "memory allocation error");
+                return *ast;
+            }
+            ast->line_type_data.inst.inst_opt.string[j][0] = string_start[k];
+            ast->line_type_data.inst.inst_opt.string[j][1] = '\0';
+            j++;
+        }
+    }
+    if (i + 1 < sep.line_number && is_string(sep.line[i + 1]))
+    {
+        error_found(ast, "error-too many strings");
+        return *ast;
+    }
+
+    ast->line_type_data.inst.inst_type = string;
+    return *ast;
+}
+
 void set_instruction(struct ast *ast, struct sep_line sep)
 {
-    if (strcmp(sep.line[1], ".data") == 0)
+    if (strcmp(sep.line[0], ".entry") == 0 || strcmp(sep.line[0], ".extern") == 0)
+    {
+        set_entry_extern(ast, sep);
+    }
+
+    else if (strcmp(sep.line[1], ".data") == 0)
     {
         set_data(ast, sep);
     }
-    else if (strcmp(sep.line[1], "string") == 0)
+    else if (strcmp(sep.line[1], ".string") == 0)
     {
-        ast->line_type_data.inst.inst_type = string;
-        if (is_string(sep.line[2]))
-        {
-            ast->line_type_data.inst.inst_opt.string[0] = sep.line[2];
-            ast->line_type_data.inst.inst_opt.string[1] = NULL;
-        }
-        else
-        {
-            ast->line_type = error_line;
-            ast->error.line_number = 1;
-            strcpy(ast->error.error, "error-invalid string");
-        }
+        set_string(ast, sep);
     }
 }
 
@@ -471,17 +499,13 @@ void line_type_data_set(struct sep_line sep, struct ast *ast)
 {
     if (ast->line_type == inst_line)
     {
-        if (process_token(sep.line[0], ast) == lable)
+        if (process_token(sep.line[0], ast) == lable )
         {
             set_lable(ast, sep);
             if (process_token(sep.line[1], ast) == instruction)
             {
                 set_instruction(ast, sep);
             }
-        }
-        else if (process_token(sep.line[0], ast) == Entry || (process_token(sep.line[1], ast) == Extrn))
-        {
-            set_entry_extern(ast, sep);
         }
     }
 }
@@ -493,6 +517,11 @@ struct ast parse_line(char *line)
     struct sep_line separated = next_word(line);
     struct ast ast;
     reset_ast(&ast);
+    if (separated.line_number == 0)
+    {
+        ast.line_type = empty_line;
+        return ast;
+    }
     line_type(separated, &ast);
     line_type_data_set(separated, &ast);
     return ast;
@@ -505,7 +534,7 @@ struct ast parse_line(char *line)
 void test_line_type_check()
 {
 
-    char line[50] = "LAble: 1";
+    char line[50] = ".entry LABEL";
     parse_line(line);
 }
 
