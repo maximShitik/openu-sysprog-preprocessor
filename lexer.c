@@ -234,7 +234,7 @@ int process_token(char *line, struct ast *ast)
         return command;
     }
     else
-
+        error_found(ast, "error-undefinded token");
         return 0;
 }
 
@@ -295,16 +295,17 @@ void reset_ast(struct ast *node)
     i = 0;
     node->line_type = empty_line;
     node->line_type_data.inst.inst_type = 0;
-    reset_string_array(node->line_type_data.inst.inst_opt.label, 32);
-    reset_string_array(node->line_type_data.inst.inst_opt.string, 50);
+    reset_string_array(node->line_type_data.inst.label_array, 2);
+    reset_string_array(node->line_type_data.inst.string_array, 50);
     node->line_type_data.command.opcode = 0;
-   
+    memset(node->line_type_data.inst.data_array, 0, sizeof(node->line_type_data.inst.data_array));
+
     for (i = 0; i < 2; i++)
     {
         node->line_type_data.command.opcode_type[i].command_type = none;
-        reset_string_array(node->line_type_data.command.opcode_type[i].command_operand.label, 50);
-        node->line_type_data.command.opcode_type[i].command_operand.number = 0;
-        node->line_type_data.command.opcode_type[i].command_operand.reg = 0;
+        reset_string_array(node->line_type_data.command.opcode_type[i].labell, 50);
+        node->line_type_data.command.opcode_type[i].numberr = 0;
+        node->line_type_data.command.opcode_type[i].regg = 0;
     }
     node->line_type_data.note = 0;
     memset(node->error.error, 0, sizeof(node->error.error));
@@ -336,10 +337,10 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
     }
     if (sep.line_number == 2)
     {
-        ast->line_type_data.inst.inst_opt.label[0] = sep.line[1];
+        ast->line_type_data.inst.label_array[0] = sep.line[1];
     }
-    ast->line_type_data.inst.inst_opt.label[0] = sep.line[0];
-    ast->line_type_data.inst.inst_opt.label[1] = NULL;
+    ast->line_type_data.inst.label_array[0] = sep.line[0];
+    ast->line_type_data.inst.label_array[1] = NULL;
     strcmp(sep.line[0], "entry") == 0 ? (ast->line_type_data.inst.inst_type = entry, ast->ARE.ARE_type = R) : (ast->line_type_data.inst.inst_type = extrn, ast->ARE.ARE_type = E);
 
     return *ast;
@@ -395,24 +396,15 @@ struct ast set_label(struct ast *ast, struct sep_line sep, int index)
     }
     strncpy(line_copy, sep.line[index], len);
     line_copy[len - 1] = '\0';
-    
-    
-    ast->line_type_data.inst.inst_opt.label[0] = line_copy;
-    ast->line_type_data.inst.inst_opt.label[1] = NULL;
+    ast->line_type_data.inst.label_array[0] = line_copy;
+    ast->line_type_data.inst.label_array[1] = NULL;
     return *ast;
 }
-void reset_data(struct ast *ast)
-{
-    int i;
-    for (i = 0; i < 80; i++)
-    {
-        ast->line_type_data.inst.inst_opt.data[i] = 0;
-    }
-}
+
 struct ast set_data(struct ast *ast, struct sep_line sep)
 {
     int i, j;
-    reset_data(ast);
+
     j = 0;
     for (i = 0; i < sep.line_number; i++)
     {
@@ -423,7 +415,7 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
                 error_found(ast, "error-missing comma");
                 return *ast;
             }
-            ast->line_type_data.inst.inst_opt.data[j++] = atoi(sep.line[i]);
+            ast->line_type_data.inst.data_array[j++] = atoi(sep.line[i]);
         }
         else if (strcmp(sep.line[i], ",") == 0)
         {
@@ -473,14 +465,14 @@ struct ast set_string(struct ast *ast, struct sep_line sep)
         len = strlen(string_start);
         for (k = 0; k < len - 1; k++)
         {
-            ast->line_type_data.inst.inst_opt.string[j] = (char *)malloc(2 * sizeof(char));
-            if (ast->line_type_data.inst.inst_opt.string[j] == NULL)
+            ast->line_type_data.inst.string_array[j] = (char *)malloc(2 * sizeof(char));
+            if (ast->line_type_data.inst.string_array[j] == NULL)
             {
                 error_found(ast, "memory allocation error");
                 return *ast;
             }
-            ast->line_type_data.inst.inst_opt.string[j][0] = string_start[k];
-            ast->line_type_data.inst.inst_opt.string[j][1] = '\0';
+            ast->line_type_data.inst.string_array[j][0] = string_start[k];
+            ast->line_type_data.inst.string_array[j][1] = '\0';
             j++;
         }
     }
@@ -511,10 +503,89 @@ void set_instruction(struct ast *ast, struct sep_line sep)
     }
 }
 
+void set_command(struct ast *ast, struct sep_line sep)
+{
+    int i;
+    i = 0;
+    while (sep.line[i] != NULL)
+    {
+        if (strcmp(sep.line[i], "mov") == 0)
+        {
+            ast->line_type_data.command.opcode = mov;
+            return;
+        }
+        if (strcmp(sep.line[i], "cmp") == 0)
+        {
+            ast->line_type_data.command.opcode = cmp;
+            return;
+        }
+        if (strcmp(sep.line[i], "add") == 0)
+        {
+            ast->line_type_data.command.opcode = add;
+            return;
+        }
+        if (strcmp(sep.line[i], "sub") == 0)
+        {
+            ast->line_type_data.command.opcode = sub;
+            return;
+        }
+        if (strcmp(sep.line[i], "not") == 0)
+        {
+            ast->line_type_data.command.opcode = nt;
+            return;
+        }
+        if (strcmp(sep.line[i], "clr") == 0)
+        {
+            ast->line_type_data.command.opcode = clr;
+            return;
+        }
+        if (strcmp(sep.line[i], "lea") == 0)
+        {
+            ast->line_type_data.command.opcode = lea;
+            return;
+        }
+        if (strcmp(sep.line[i], "inc") == 0)
+        {
+            ast->line_type_data.command.opcode = inc;
+            return;
+        }
+        if (strcmp(sep.line[i], "dec") == 0)
+        {
+            ast->line_type_data.command.opcode = dec;
+            return;
+        }
+        if (strcmp(sep.line[i], "jmp") == 0)
+        {
+            ast->line_type_data.command.opcode = jmp;
+            return;
+        }
+        if (strcmp(sep.line[i], "bne") == 0)
+        {
+            ast->line_type_data.command.opcode = bne;
+            return;
+        }
+        if (strcmp(sep.line[i], "red") == 0)
+        {
+            ast->line_type_data.command.opcode = red;
+            return;
+        }
+        if (strcmp(sep.line[i], "prn") == 0)
+        {
+            ast->line_type_data.command.opcode = prn;
+            return;
+        }
+        if (strcmp(sep.line[i], "jsr") == 0)
+        {
+            ast->line_type_data.command.opcode = jsr;
+            return;
+        }
+    }
+}
+
 void line_type_data_set(struct sep_line sep, struct ast *ast)
 {
     int i;
-    i=0;
+    i = 0;
     while (sep.line[i] != NULL)
     {
         if (ast->line_type == inst_line)
@@ -528,30 +599,29 @@ void line_type_data_set(struct sep_line sep, struct ast *ast)
             else if (process_token(sep.line[i], ast) == lable)
             {
                 set_label(ast, sep, 0);
-                
             }
         }
         if (ast->line_type == command_line)
         {
-            if (process_token(sep.line[i], ast) == instruction)
+            if (process_token(sep.line[i], ast) == command)
             {
-                set_instruction(ast, sep);
-                i++;
+                set_command(ast, sep);
+                return;
             }
 
             else if (process_token(sep.line[i], ast) == command)
             {
                 set_label(ast, sep, 0);
-                i++;
             }
         }
-        if(ast->line_type==error_line || ast->line_type==empty_line || ast->line_type==note_line)
+        if (ast->line_type == error_line || ast->line_type == empty_line || ast->line_type == note_line)
         {
             return;
         }
         i++;
     }
-    error_found(ast, "error-undefinded line type");
+    if (ast->line_type != error_line)
+        error_found(ast, "error-undefinded line type");
 }
 /**
  * Parses a line and generates an AST node.
@@ -578,7 +648,7 @@ struct ast parse_line(char *line)
 void test_line_type_check()
 {
 
-    char line[50] = "LABEL: .data 2";
+    char line[50] = ",.string \"string\"";
     parse_line(line);
 }
 
