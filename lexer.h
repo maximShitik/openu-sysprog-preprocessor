@@ -10,7 +10,8 @@ typedef struct ast
         note_line,
         inst_line,
         command_line,
-        empty_line
+        empty_line,
+        macro_line
 
     } line_type;
 
@@ -91,6 +92,10 @@ typedef struct ast
             E
         } ARE_type;
     } ARE;
+    struct{
+        char name[80];
+        int line_number;
+    }macro;
 
 } ast;
 
