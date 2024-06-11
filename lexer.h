@@ -21,25 +21,24 @@ typedef struct ast
         {
             enum inst_type
             {
-                data = 1,
+                lable = 1,
                 string,
                 entry,
                 extrn,
-                lable
+                data
             } inst_type;
-            union
-            {
-                char *label[32]; /*entry/extern*/
-                int data;
-                char *string[50];
-            } inst_opt;
+
+            char *label_array[2]; /*entry/extern*/
+            int data_array[80];
+            char *string_array[50];
+
         } inst;
 
         struct command
         {
             enum
             {
-                mov,
+                mov = 1,
                 cmp,
                 add,
                 sub,
@@ -67,12 +66,10 @@ typedef struct ast
                     label
 
                 } command_type;
-                union
-                {
-                    char *label[50];
-                    int number;
-                    int reg;
-                } command_operand;
+
+                char *labell[50];
+                int numberr;
+                int regg;
 
             } opcode_type[2];
 
