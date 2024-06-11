@@ -242,7 +242,7 @@ int process_token(char *line, struct ast *ast)
  * Checks if a string can be converted to an integer.
  * Returns 1 if it can, 0 otherwise.
  */
-int is_int(char *line)
+int is_int(char *line,struct ast *ast)
 {
     char *endptr;
     if (*line == '+' || *line == '-' || *line == '#')
@@ -252,6 +252,7 @@ int is_int(char *line)
 
     if (strchr(line, '.') != NULL)
     {
+        error_found(ast, "error-invalid number");
         return false;
     }
 
@@ -408,9 +409,9 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
     j = 0;
     for (i = 0; i < sep.line_number; i++)
     {
-        if (is_int(sep.line[i]))
+        if (is_int(sep.line[i],ast))
         {
-            if ((i + 1) < sep.line_number && is_int(sep.line[i + 1]))
+            if ((i + 1) < sep.line_number && is_int(sep.line[i + 1],ast))
             {
                 error_found(ast, "error-missing comma");
                 return *ast;
@@ -427,7 +428,7 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
             else
                 continue;
         }
-        else if ((i + 1) < sep.line_number && (!is_int(sep.line[i]) && strcmp(sep.line[i + 1], ",") == 0))
+        else if ((i + 1) < sep.line_number && (!is_int(sep.line[i],ast) && strcmp(sep.line[i + 1], ",") == 0))
         {
             error_found(ast, "error-comma before first number");
             return *ast;
@@ -648,7 +649,7 @@ struct ast parse_line(char *line)
 void test_line_type_check()
 {
 
-    char line[50] = ",.string \"string\"";
+    char line[50] = "lane: .data 1,1.2";
     parse_line(line);
 }
 
