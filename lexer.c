@@ -23,7 +23,8 @@ typedef enum
     empty,
     registerr,
     Entry,
-    Extrn
+    Extrn,
+    macro
 
 } return_types;
 
@@ -142,6 +143,7 @@ int system_names(char *line)
     char *command_names[] = {"mov", "cmp", "add", "sub", "not", "clr", "lea", "inc", "dec", "jmp", "bne", "red", "prn", "jsr", "rts", "stop"};
     char *inst_names[] = {"data", "string", "entry", "extrn"};
     char *registers[] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"};
+    char *macros[] = {"macr"};
     int i;
     for (i = 0; i < sizeof(command_names) / sizeof(command_names[0]); i++)
     {
@@ -164,6 +166,13 @@ int system_names(char *line)
         if (strcmp(line, registers[i]) == 0)
         {
             return registerr;
+        }
+    }
+    for (i = 0; i < sizeof(macros) / sizeof(macros); i++)
+    {
+        if (strcmp(line, macros[i]) == 0)
+        {
+            return macro;
         }
     }
 
@@ -233,16 +242,20 @@ int process_token(char *line, struct ast *ast)
     {
         return command;
     }
+    if(system_names(line) == macro)
+    {
+        return macro;
+    }
     else
         error_found(ast, "error-undefinded token");
-        return 0;
+    return 0;
 }
 
 /**
  * Checks if a string can be converted to an integer.
  * Returns 1 if it can, 0 otherwise.
  */
-int is_int(char *line,struct ast *ast)
+int is_int(char *line, struct ast *ast)
 {
     char *endptr;
     if (*line == '+' || *line == '-' || *line == '#')
@@ -250,7 +263,7 @@ int is_int(char *line,struct ast *ast)
         line++;
     }
 
-    if (strchr(line, '.') != NULL && strcmp(line,".data") != 0)
+    if (strchr(line, '.') != NULL && strcmp(line, ".data") != 0)
     {
         error_found(ast, "error-invalid number");
         return false;
@@ -347,12 +360,36 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
     return *ast;
 }
 
+struct ast set_macro(struct ast *ast, struct sep_line sep)
+{
+    if (sep.line_number < 2)
+    {
+        error_found(ast, "error-missing macro name");
+        return *ast;
+    }
+    if (sep.line_number > 2)
+    {
+        error_found(ast, "error-too many macro arguments");
+
+        return *ast;
+    }
+
+    strcpy(ast->macro.name, sep.line[1]);
+    ast->line_type=macro_line;
+    return *ast;
+}
+
 struct ast line_type(struct sep_line sep, struct ast *ast)
 {
     if (is_note(sep.line[0]))
     {
         ast->line_type_data.note = 1;
         ast->line_type = note_line;
+        return *ast;
+    }
+    if (process_token(sep.line[0], ast) == macro)
+    {
+        set_macro(ast, sep);
         return *ast;
     }
     if (process_token(sep.line[0], ast) == instruction)
@@ -409,9 +446,9 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
     j = 0;
     for (i = 0; i < sep.line_number; i++)
     {
-        if (is_int(sep.line[i],ast))
+        if (is_int(sep.line[i], ast))
         {
-            if ((i + 1) < sep.line_number && is_int(sep.line[i + 1],ast))
+            if ((i + 1) < sep.line_number && is_int(sep.line[i + 1], ast))
             {
                 error_found(ast, "error-missing comma");
                 return *ast;
@@ -428,7 +465,7 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
             else
                 continue;
         }
-        else if ((i + 1) < sep.line_number && (!is_int(sep.line[i],ast) && strcmp(sep.line[i + 1], ",") == 0))
+        else if ((i + 1) < sep.line_number && (!is_int(sep.line[i], ast) && strcmp(sep.line[i + 1], ",") == 0))
         {
             error_found(ast, "error-comma before first number");
             return *ast;
@@ -589,6 +626,10 @@ void line_type_data_set(struct sep_line sep, struct ast *ast)
     i = 0;
     while (sep.line[i] != NULL)
     {
+        if(ast->line_type==macro_line)
+        {
+            return;
+        }
         if (ast->line_type == inst_line)
         {
             if (process_token(sep.line[i], ast) == instruction)
@@ -649,7 +690,7 @@ struct ast parse_line(char *line)
 void test_line_type_check()
 {
 
-    char line[50] = "lane: .data 1.2";
+    char line[50] = "macr m_macr";
     parse_line(line);
 }
 
