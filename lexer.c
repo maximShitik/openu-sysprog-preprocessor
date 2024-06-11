@@ -250,7 +250,7 @@ int is_int(char *line,struct ast *ast)
         line++;
     }
 
-    if (strchr(line, '.') != NULL)
+    if (strchr(line, '.') != NULL && strcmp(line,".data") != 0)
     {
         error_found(ast, "error-invalid number");
         return false;
@@ -649,7 +649,7 @@ struct ast parse_line(char *line)
 void test_line_type_check()
 {
 
-    char line[50] = "lane: .data 1,1.2";
+    char line[50] = "lane: .data 1.2";
     parse_line(line);
 }
 
