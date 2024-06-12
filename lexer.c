@@ -143,7 +143,7 @@ int system_names(char *line)
     char *command_names[] = {"mov", "cmp", "add", "sub", "not", "clr", "lea", "inc", "dec", "jmp", "bne", "red", "prn", "jsr", "rts", "stop"};
     char *inst_names[] = {"data", "string", "entry", "extrn"};
     char *registers[] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"};
-    char *macros[] = {"macr"};
+    char *macros[] = {"macr","endmacr"};
     int i;
     for (i = 0; i < sizeof(command_names) / sizeof(command_names[0]); i++)
     {
