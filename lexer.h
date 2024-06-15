@@ -1,3 +1,4 @@
+#define MAX_LINE 80
 
 
 typedef struct ast
@@ -81,6 +82,7 @@ typedef struct ast
     struct
     {
         char error[300];
+        char error_token[80];
         int line_number;
     } error;
     struct
@@ -92,10 +94,12 @@ typedef struct ast
             E
         } ARE_type;
     } ARE;
-    struct{
+    struct macro
+    {
         char name[80];
         int line_number;
-    }macro;
+    } macro;
+
 
 } ast;
 
