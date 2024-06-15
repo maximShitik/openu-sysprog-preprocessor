@@ -34,7 +34,6 @@ typedef enum bool
     true
 } bool;
 
-
 /*reset the ast but without error*/
 void error_found(struct ast *ast, char *error_message);
 
@@ -206,7 +205,15 @@ int process_token(char *line, struct ast *ast)
         line_copy[len - 1] = '\0';
         result = system_names(line_copy);
         free(line_copy);
-        return result == lable; /*valid labale name */
+       if(result == true)
+        {
+            return true;
+        }
+        else
+        {
+            error_found(ast, "error-invalid label name");
+            return false;
+        }
     }
 
     if (line[0] == '.')
@@ -232,7 +239,7 @@ int process_token(char *line, struct ast *ast)
             free(line_copy);
             return instruction; /*valid instruction*/
         }
-        else if (result == true )
+        else if (result == true)
         {
             error_found(ast, "error-invalid instruction name");
             return false;
@@ -248,9 +255,9 @@ int process_token(char *line, struct ast *ast)
         return macro;
     }
     else
-        
+
         error_found(ast, "error-undefinded token");
-        strcpy(ast->error.error_token, line);
+    strcpy(ast->error.error_token, line); /*checking if the error causing token is saved as a macro before*/
     return 0;
 }
 
@@ -378,56 +385,13 @@ struct ast set_macro(struct ast *ast, struct sep_line sep)
 
             return *ast;
         }
-            strcpy(ast->macro.name, sep.line[1]);
+        strcpy(ast->macro.name, sep.line[1]);
     }
 
     ast->line_type = macro_line;
     return *ast;
 }
 
-struct ast line_type(struct sep_line sep, struct ast *ast)
-{
-    if (is_note(sep.line[0]))
-    {
-        ast->line_type_data.note = 1;
-        ast->line_type = note_line;
-        return *ast;
-    }
-    if (process_token(sep.line[0], ast) == macro)
-    {
-        set_macro(ast, sep);
-        return *ast;
-    }
-    if (process_token(sep.line[0], ast) == instruction)
-    {
-        ast->line_type = inst_line;
-        return *ast;
-    }
-    if (process_token(sep.line[0], ast) == lable)
-    {
-        ast->line_type = inst_line;
-        if (process_token(sep.line[1], ast) == instruction)
-        {
-            return *ast;
-        }
-        else if (process_token(sep.line[1], ast) == command)
-        {
-            ast->line_type = command_line;
-            return *ast;
-        }
-    }
-    else if (process_token(sep.line[0], ast) == command)
-    {
-        ast->line_type = command_line;
-        return *ast;
-    }
-    else if (ast->line_type != error_line)
-    {
-        error_found(ast, "error-undefinded line type");
-        return *ast;
-    }
-    return *ast;
-}
 struct ast set_label(struct ast *ast, struct sep_line sep, int index)
 {
     char *line_copy;
@@ -537,140 +501,94 @@ void set_instruction(struct ast *ast, struct sep_line sep)
         set_entry_extern(ast, sep);
     }
 
-    else if (strcmp(sep.line[1], ".data") == 0)
+    else if (strcmp(sep.line[1], ".data") == 0 || strcmp(sep.line[0], ".data") == 0)
     {
         set_data(ast, sep);
     }
-    else if (strcmp(sep.line[1], ".string") == 0)
+    else if (strcmp(sep.line[1], ".string") == 0 || strcmp(sep.line[0], ".string") == 0)
     {
         set_string(ast, sep);
     }
 }
 
-void set_command(struct ast *ast, struct sep_line sep)
+int operand_group(struct ast *ast, char *command)
 {
-    int i;
-    i = 0;
-    while (sep.line[i] != NULL)
+    if (strcmp(command, "mov") == 0 || strcmp(command, "cmp") == 0 || strcmp(command, "add") == 0 || strcmp(command, "sub") == 0 || strcmp(command, "lea") == 0)
     {
-        if (strcmp(sep.line[i], "mov") == 0)
-        {
-            ast->line_type_data.command.opcode = mov;
-            return;
-        }
-        if (strcmp(sep.line[i], "cmp") == 0)
-        {
-            ast->line_type_data.command.opcode = cmp;
-            return;
-        }
-        if (strcmp(sep.line[i], "add") == 0)
-        {
-            ast->line_type_data.command.opcode = add;
-            return;
-        }
-        if (strcmp(sep.line[i], "sub") == 0)
-        {
-            ast->line_type_data.command.opcode = sub;
-            return;
-        }
-        if (strcmp(sep.line[i], "not") == 0)
-        {
-            ast->line_type_data.command.opcode = nt;
-            return;
-        }
-        if (strcmp(sep.line[i], "clr") == 0)
-        {
-            ast->line_type_data.command.opcode = clr;
-            return;
-        }
-        if (strcmp(sep.line[i], "lea") == 0)
-        {
-            ast->line_type_data.command.opcode = lea;
-            return;
-        }
-        if (strcmp(sep.line[i], "inc") == 0)
-        {
-            ast->line_type_data.command.opcode = inc;
-            return;
-        }
-        if (strcmp(sep.line[i], "dec") == 0)
-        {
-            ast->line_type_data.command.opcode = dec;
-            return;
-        }
-        if (strcmp(sep.line[i], "jmp") == 0)
-        {
-            ast->line_type_data.command.opcode = jmp;
-            return;
-        }
-        if (strcmp(sep.line[i], "bne") == 0)
-        {
-            ast->line_type_data.command.opcode = bne;
-            return;
-        }
-        if (strcmp(sep.line[i], "red") == 0)
-        {
-            ast->line_type_data.command.opcode = red;
-            return;
-        }
-        if (strcmp(sep.line[i], "prn") == 0)
-        {
-            ast->line_type_data.command.opcode = prn;
-            return;
-        }
-        if (strcmp(sep.line[i], "jsr") == 0)
-        {
-            ast->line_type_data.command.opcode = jsr;
-            return;
-        }
+        return 2;
+    }
+    if (strcmp(command, "clr") == 0 || strcmp(command, "not") == 0 || strcmp(command, "inc") == 0 || strcmp(command, "dec") == 0 || strcmp(command, "jmp") == 0 || strcmp(command, "bne") == 0 || strcmp(command, "red") == 0 || strcmp(command, "prn") == 0 || strcmp(command, "jsr") == 0)
+        return 1;
+    if (strcmp(command, "rts") == 0 || strcmp(command, "stop") == 0)
+        return 0;
+}
+
+struct ast two_group_command(struct ast *ast, struct sep_line sep);
+struct ast one_group_command(struct ast *ast, struct sep_line sep);
+struct ast zero_group_command(struct ast *ast, struct sep_line sep);
+
+
+void set_command(struct ast *ast, struct sep_line sep ,char *command){
+    int result;
+    result=operand_group(ast,command);
+    if(result==2){
+        two_group_command(ast,sep);
+    }
+    else if(result==1){
+        one_group_command(ast,sep);
+    }
+    else if(result==0){
+        zero_group_command(ast,sep);
     }
 }
 
-void line_type_data_set(struct sep_line sep, struct ast *ast)
+struct ast line_type(struct sep_line sep, struct ast *ast)
 {
-    int i;
-    i = 0;
-    while (sep.line[i] != NULL)
+    if (is_note(sep.line[0]))
     {
-        if (ast->line_type == macro_line)
-        {
-            return;
-        }
-        if (ast->line_type == inst_line)
-        {
-            if (process_token(sep.line[i], ast) == instruction)
-            {
-                set_instruction(ast, sep);
-                return;
-            }
-
-            else if (process_token(sep.line[i], ast) == lable)
-            {
-                set_label(ast, sep, 0);
-            }
-        }
-        if (ast->line_type == command_line)
-        {
-            if (process_token(sep.line[i], ast) == command)
-            {
-                set_command(ast, sep);
-                return;
-            }
-
-            else if (process_token(sep.line[i], ast) == command)
-            {
-                set_label(ast, sep, 0);
-            }
-        }
-        if (ast->line_type == error_line || ast->line_type == empty_line || ast->line_type == note_line)
-        {
-            return;
-        }
-        i++;
+        ast->line_type_data.note = 1;
+        ast->line_type = note_line;
+        return *ast;
     }
-    if (ast->line_type != error_line)
+    if (process_token(sep.line[0], ast) == macro)
+    {
+        set_macro(ast, sep);
+        return *ast;
+    }
+    if (process_token(sep.line[0], ast) == instruction)
+    {
+        ast->line_type = inst_line;
+        set_instruction(ast, sep);
+        return *ast;
+    }
+    if (process_token(sep.line[0], ast) == lable)
+    {
+        ast->line_type = inst_line;
+        set_label(ast, sep, 0);
+        if (process_token(sep.line[1], ast) == instruction)
+        {
+            set_instruction(ast, sep);
+            return *ast;
+        }
+        else if (process_token(sep.line[1], ast) == command)
+        {
+            ast->line_type = command_line;
+            return *ast;
+        }
+    }
+    else if (process_token(sep.line[0], ast) == command)
+    {
+        ast->line_type = command_line; 
+        return *ast;
+    }
+    else if (ast->line_type != error_line)
+    {
         error_found(ast, "error-undefinded line type");
+        return *ast;
+    }
+    return *ast;
 }
+
 /**
  * Parses a line and generates an AST node.
  */
@@ -685,7 +603,7 @@ struct ast parse_line(char *line)
         return ast;
     }
     line_type(separated, &ast);
-    line_type_data_set(separated, &ast);
+
     return ast;
 }
 
@@ -696,7 +614,7 @@ struct ast parse_line(char *line)
 void test_line_type_check()
 {
 
-    char line[50] = "mac1";
+    char line[50] = "dSta: .string \"hello\"";
     parse_line(line);
 }
 
