@@ -14,7 +14,7 @@ struct sep_line
     int line_number;
 };
 
-typedef enum
+typedef enum return_types
 {
     error = 1,
     note,
@@ -28,11 +28,12 @@ typedef enum
 
 } return_types;
 
-typedef enum
+typedef enum bool
 {
     false,
     true
 } bool;
+
 
 /*reset the ast but without error*/
 void error_found(struct ast *ast, char *error_message);
@@ -143,7 +144,7 @@ int system_names(char *line)
     char *command_names[] = {"mov", "cmp", "add", "sub", "not", "clr", "lea", "inc", "dec", "jmp", "bne", "red", "prn", "jsr", "rts", "stop"};
     char *inst_names[] = {"data", "string", "entry", "extrn"};
     char *registers[] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"};
-    char *macros[] = {"macr","endmacr"};
+    char *macros[] = {"macr", "endmacr"};
     int i;
     for (i = 0; i < sizeof(command_names) / sizeof(command_names[0]); i++)
     {
@@ -168,7 +169,7 @@ int system_names(char *line)
             return registerr;
         }
     }
-    for (i = 0; i < sizeof(macros) / sizeof(macros); i++)
+    for (i = 0; i < sizeof(macros) / sizeof(macros[0]); i++)
     {
         if (strcmp(line, macros[i]) == 0)
         {
@@ -231,7 +232,7 @@ int process_token(char *line, struct ast *ast)
             free(line_copy);
             return instruction; /*valid instruction*/
         }
-        else if (result == true)
+        else if (result == true )
         {
             error_found(ast, "error-invalid instruction name");
             return false;
@@ -242,12 +243,14 @@ int process_token(char *line, struct ast *ast)
     {
         return command;
     }
-    if(system_names(line) == macro)
+    if (system_names(line) == macro)
     {
         return macro;
     }
     else
+        
         error_found(ast, "error-undefinded token");
+        strcpy(ast->error.error_token, line);
     return 0;
 }
 
@@ -362,20 +365,23 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
 
 struct ast set_macro(struct ast *ast, struct sep_line sep)
 {
-    if (sep.line_number < 2)
+    if (strcmp(sep.line[0], "macr") == 0)
     {
-        error_found(ast, "error-missing macro name");
-        return *ast;
-    }
-    if (sep.line_number > 2)
-    {
-        error_found(ast, "error-too many macro arguments");
+        if (sep.line_number < 2)
+        {
+            error_found(ast, "error-missing macro name");
+            return *ast;
+        }
+        if (sep.line_number > 2)
+        {
+            error_found(ast, "error-too many macro arguments");
 
-        return *ast;
+            return *ast;
+        }
+            strcpy(ast->macro.name, sep.line[1]);
     }
 
-    strcpy(ast->macro.name, sep.line[1]);
-    ast->line_type=macro_line;
+    ast->line_type = macro_line;
     return *ast;
 }
 
@@ -626,7 +632,7 @@ void line_type_data_set(struct sep_line sep, struct ast *ast)
     i = 0;
     while (sep.line[i] != NULL)
     {
-        if(ast->line_type==macro_line)
+        if (ast->line_type == macro_line)
         {
             return;
         }
@@ -690,7 +696,7 @@ struct ast parse_line(char *line)
 void test_line_type_check()
 {
 
-    char line[50] = "macr m_macr";
+    char line[50] = "mac1";
     parse_line(line);
 }
 
