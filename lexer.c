@@ -205,7 +205,7 @@ int process_token(char *line, struct ast *ast)
         line_copy[len - 1] = '\0';
         result = system_names(line_copy);
         free(line_copy);
-       if(result == true)
+        if (result == true)
         {
             return true;
         }
@@ -523,22 +523,51 @@ int operand_group(struct ast *ast, char *command)
         return 0;
 }
 
-struct ast two_group_command(struct ast *ast, struct sep_line sep);
+struct ast two_group_command(struct ast *ast, struct sep_line sep)
+{
+    if (strcmp(sep.line[1], ",") != 0)
+    {
+        error_found(ast, "error-extra comma");
+        return *ast;
+    }
+    if (strcmp(sep.line[0], "mov") == 0 || strcmp(sep.line[1], "mov") == 0)
+    {
+
+        set_mov(ast, sep);
+    }
+
+    if (strcmp(sep.line[0], "lea") == 0 || strcmp(sep.line[1], "lea") == 0)
+    {
+
+        set_lea(ast, sep);
+    }
+
+    else
+        set_cmp_add_sub(ast, sep);
+}
+
+struct ast set_lea(struct ast *ast, struct sep_line sep)
+{
+    
+}
 struct ast one_group_command(struct ast *ast, struct sep_line sep);
 struct ast zero_group_command(struct ast *ast, struct sep_line sep);
 
-
-void set_command(struct ast *ast, struct sep_line sep ,char *command){
+void set_command(struct ast *ast, struct sep_line sep, char *command)
+{
     int result;
-    result=operand_group(ast,command);
-    if(result==2){
-        two_group_command(ast,sep);
+    result = operand_group(ast, command);
+    if (result == 2)
+    {
+        two_group_command(ast, sep);
     }
-    else if(result==1){
-        one_group_command(ast,sep);
+    else if (result == 1)
+    {
+        one_group_command(ast, sep);
     }
-    else if(result==0){
-        zero_group_command(ast,sep);
+    else if (result == 0)
+    {
+        zero_group_command(ast, sep);
     }
 }
 
@@ -578,7 +607,7 @@ struct ast line_type(struct sep_line sep, struct ast *ast)
     }
     else if (process_token(sep.line[0], ast) == command)
     {
-        ast->line_type = command_line; 
+        ast->line_type = command_line;
         return *ast;
     }
     else if (ast->line_type != error_line)
