@@ -404,8 +404,23 @@ struct ast set_label(struct ast *ast, struct sep_line sep, int index)
     }
     strncpy(line_copy, sep.line[index], len);
     line_copy[len - 1] = '\0';
-    ast->line_type_data.inst.label_array[0] = line_copy;
-    ast->line_type_data.inst.label_array[1] = NULL;
+    if (ast->line_type == inst_line)
+    {
+        ast->line_type_data.inst.label_array[0] = line_copy;
+        ast->line_type_data.inst.label_array[1] = NULL;
+    }
+    else if (ast->line_type == command_line)
+    {
+        ast->line_type_data.command.opcode_type[0].command_type = label;
+        ast0 > line_type_data.command.opcode_type[0].labell[0] = line_copy;
+        ast->line_type_data.command.opcode_type[1].command_type = NULL;
+    }
+    else
+    {
+        error_found(ast, "error-undefinded line type");
+        return *ast;
+    }
+
     return *ast;
 }
 
@@ -523,11 +538,16 @@ int operand_group(struct ast *ast, char *command)
         return 0;
 }
 
-struct ast two_group_command(struct ast *ast, struct sep_line sep)
+void two_group_command(struct ast *ast, struct sep_line sep)
 {
     if (strcmp(sep.line[1], ",") != 0)
     {
         error_found(ast, "error-extra comma");
+        return *ast;
+    }
+    if (sep.line[2] == NULL)
+    {
+        error_found(ast, "error-missing operand");
         return *ast;
     }
     if (strcmp(sep.line[0], "mov") == 0 || strcmp(sep.line[1], "mov") == 0)
@@ -548,7 +568,60 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep)
 
 struct ast set_lea(struct ast *ast, struct sep_line sep)
 {
-    
+    int current;
+    current = 0;
+    int i;
+    while (strcmp(sep.line[0], "lea") != 0)
+    {
+        sep.line++;
+        current++;
+    }
+    current++;
+
+    if (process_token(sep.line[current]) != true)
+    {
+        error_found(ast, "error-invalid token,lea command can receive only a label");
+        return *ast;
+    }
+    set_label(ast, sep, current);
+    current++;
+    if (strcmp(sep.line[current], ",") != 0)
+    {
+        error_found(ast, "error-missing comma");
+        return *ast;
+    }
+    current++;
+    if (sep.line[current] == NULL)
+    {
+        error_found(ast, "error-missing operand");
+        return *ast;
+    }
+    if (is_int(sep.line[current], ast))
+    {
+        error_found(ast, "error-invalid operand,lea command cant receive numbers");
+        return *ast;
+    }
+    if (sep.line[current++] != NULL)
+    {
+        error_found(ast, "error-too many operands");
+        return *ast;
+    }
+    ast->line_type_data.command.opcode = lea;
+    if (process_token(sep.line[current], ast) == registerr)
+    {
+        ast->line_type_data.command.opcode_type[1].command_type = reg;
+        ast->line_type_data.command.opcode_type[1].regg = atoi(sep.line[current]);
+    }
+    else if (process_token(sep.line[current], ast) == true)
+    {
+        set_label(ast, sep, current);
+    }
+    else
+    {
+        error_found(ast, "error-invalid operand");
+        return *ast;
+    }
+    return *ast;
 }
 struct ast one_group_command(struct ast *ast, struct sep_line sep);
 struct ast zero_group_command(struct ast *ast, struct sep_line sep);
