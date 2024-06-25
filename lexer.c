@@ -143,7 +143,7 @@ int system_names(char *line)
 {
     char *command_names[] = {"mov", "cmp", "add", "sub", "not", "clr", "lea", "inc", "dec", "jmp", "bne", "red", "prn", "jsr", "rts", "stop"};
     char *inst_names[] = {"data", "string", "entry", "extrn"};
-    char *registers[] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"};
+    char *registers[] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "*r0", "*r1", "*r2", "*r3", "*r4", "*r5", "*r6", "*r7"};
     char *macros[] = {"macr", "endmacr"};
     int i;
     for (i = 0; i < sizeof(command_names) / sizeof(command_names[0]); i++)
@@ -332,7 +332,7 @@ void reset_ast(struct ast *node)
         node->line_type_data.command.opcode_type[i].numberr = 0;
         node->line_type_data.command.opcode_type[i].regg = 0;
     }
-    node->line_type_data.note = 0;
+    
     memset(node->error.error, 0, sizeof(node->error.error));
     node->error.line_number = 0;
     node->ARE.ARE_type = A;
@@ -408,16 +408,29 @@ struct ast set_label(struct ast *ast, struct sep_line sep, int index)
     {
         line_copy[len - 1] = '\0';
     }
-    if (ast->line_type == inst_line)
+    if (ast->line_type_data.inst.label_array[0] == NULL)
     {
-        ast->line_type_data.inst.label_array[0] = line_copy;
-        ast->line_type_data.inst.label_array[1] = NULL;
+        if (ast->line_type == inst_line)
+        {
+            ast->line_type_data.inst.label_array[0] = line_copy;
+            ast->line_type_data.inst.label_array[1] = NULL;
+        }
+        else if (ast->line_type == command_line)
+        {
+            ast->line_type_data.command.opcode_type[0].command_type = label;
+            ast->line_type_data.command.opcode_type[0].labell[0] = line_copy;
+        }
+    }
+    else if (ast->line_type == inst_line)
+    {
+        ast->line_type_data.inst.label_array[1] = line_copy;
     }
     else if (ast->line_type == command_line)
     {
-        ast->line_type_data.command.opcode_type[0].command_type = label;
-        ast->line_type_data.command.opcode_type[0].labell[0] = line_copy;
+
+        ast->line_type_data.command.opcode_type[0].labell[1] = line_copy;
     }
+
     else
     {
         error_found(ast, "error-undefinded line type");
@@ -540,9 +553,38 @@ int operand_group(struct ast *ast, char *command)
     if (strcmp(command, "rts") == 0 || strcmp(command, "stop") == 0)
         return 0;
 }
+#include <string.h>
 
-struct ast two_group_command(struct ast *ast, struct sep_line sep)
+void set_command_name(struct ast *ast, char *command)
 {
+    int i;
+    int num_commands;
+    struct
+    {
+        const char *name;
+        int opcode;
+    } command_map[] = {
+        {"mov", mov}, {"cmp", cmp}, {"add", add}, {"sub", sub}, {"lea", lea}, {"not", nt}, {"clr", clr}, {"inc", inc}, {"dec", dec}, {"jmp", jmp}, {"bne", bne}, {"red", red}, {"prn", prn}, {"jsr", jsr}, {"rts", rts}, {"stop", stop}};
+
+    num_commands = sizeof(command_map) / sizeof(command_map[0]);
+    for (i = 0; i < num_commands; i++)
+    {
+        if (strcmp(command, command_map[i].name) == 0)
+        {
+            ast->line_type_data.command.opcode = command_map[i].opcode;
+            return;
+        }
+    }
+
+    ast->line_type_data.command.opcode = 0; 
+}
+
+struct ast two_group_command(struct ast *ast, struct sep_line sep, char *command, int group)
+{
+    char *line_copy;
+    int current;
+    current = 0;
+    int i;
     if (strcmp(sep.line[1], ",") == 0)
     {
         error_found(ast, "error-extra comma");
@@ -553,35 +595,30 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep)
         error_found(ast, "error-missing operand");
         return *ast;
     }
-
-    if (strcmp(sep.line[0], "lea") == 0 || strcmp(sep.line[1], "lea") == 0)
+    while (strcmp(sep.line[current], command) != 0)
     {
-
-        set_lea(ast, sep);
-    }
-   
-}
-
-struct ast set_lea(struct ast *ast, struct sep_line sep)
-{
-    char *line_copy;
-    int current;
-    current = 0;
-    int i;
-    while (strcmp(sep.line[current], "lea") != 0)
-    {
-        sep.line[current];
-        current++;
+        sep.line[current++];
     }
     current++;
 
-    if (system_names(sep.line[current]) != true)
+    if (strcmp(command, "lea") == 0)
+        if (system_names(sep.line[current]) != true)
+        {
+            error_found(ast, "error-invalid operand");
+            return *ast;
+        }
+    if (system_names(sep.line[current]) == true)
+        set_label(ast, sep, current);
+    if (is_int(sep.line[current], ast))
     {
-        error_found(ast, "error-invalid operand");
-        return *ast;
+        ast->line_type_data.command.opcode_type[0].command_type = number;
+        ast->line_type_data.command.opcode_type[0].numberr = atoi(sep.line[current]);
     }
-    set_label(ast, sep, current);
-
+    if (system_names(sep.line[current]) == registerr)
+    {
+        ast->line_type_data.command.opcode_type[0].command_type = reg;
+        ast->line_type_data.command.opcode_type[0].regg = atoi(sep.line[current] + 1);
+    }
     current++;
     if (strcmp(sep.line[current], ",") != 0)
     {
@@ -594,10 +631,13 @@ struct ast set_lea(struct ast *ast, struct sep_line sep)
         error_found(ast, "error-missing operand");
         return *ast;
     }
-    if (is_int(sep.line[current], ast))
+    if (strcmp(command, "cmp") != 0)
     {
-        error_found(ast, "error-invalid operand,lea command cant receive numbers");
-        return *ast;
+        if (is_int(sep.line[current], ast))
+        {
+            error_found(ast, "error-invalid operand,command cant receive numbers");
+            return *ast;
+        }
     }
     if (sep.line[++current] != NULL)
     {
@@ -605,7 +645,10 @@ struct ast set_lea(struct ast *ast, struct sep_line sep)
         return *ast;
     }
     current--;
-    ast->line_type_data.command.opcode = lea;
+    if (strcmp(command, "not") == 0)
+        ast->line_type_data.command.opcode = nt;
+    else
+        set_command_name(ast, command);
     if (system_names(sep.line[current]) == registerr)
     {
         ast->line_type_data.command.opcode_type[1].command_type = reg;
@@ -631,7 +674,7 @@ void set_command(struct ast *ast, struct sep_line sep, char *command)
     result = operand_group(ast, command);
     if (result == 2)
     {
-        two_group_command(ast, sep);
+        two_group_command(ast, sep, command, result);
     }
 }
 
@@ -639,7 +682,7 @@ struct ast line_type(struct sep_line sep, struct ast *ast)
 {
     if (is_note(sep.line[0]))
     {
-        ast->line_type_data.note = 1;
+        
         ast->line_type = note_line;
         return *ast;
     }
@@ -657,15 +700,17 @@ struct ast line_type(struct sep_line sep, struct ast *ast)
     if (process_token(sep.line[0], ast) == lable)
     {
         ast->line_type = inst_line;
-        set_label(ast, sep, 0);
+
         if (process_token(sep.line[1], ast) == instruction)
         {
+            set_label(ast, sep, 0);
             set_instruction(ast, sep);
             return *ast;
         }
         else if (process_token(sep.line[1], ast) == command)
         {
             ast->line_type = command_line;
+            set_label(ast, sep, 0);
             set_command(ast, sep, sep.line[1]);
 
             return *ast;
@@ -710,7 +755,7 @@ struct ast parse_line(char *line)
 void test_line_type_check()
 {
 
-    char line[50] = "main: lea STR,r6";
+    char line[50] = " mov STR,r99";
     parse_line(line);
 }
 
