@@ -44,9 +44,10 @@ typedef struct ast
                 cmp,
                 add,
                 sub,
+                lea,
+
                 nt,
                 clr,
-                lea,
                 inc,
                 dec,
                 jmp,
@@ -54,6 +55,7 @@ typedef struct ast
                 red,
                 prn,
                 jsr,
+
                 rts,
                 stop
             } opcode;
@@ -69,7 +71,7 @@ typedef struct ast
 
                 } command_type;
 
-                char *labell[50];
+                char *labell[2];
                 int numberr;
                 int regg;
 
@@ -77,7 +79,7 @@ typedef struct ast
 
         } command;
 
-        int note;
+        
     } line_type_data;
     struct
     {
