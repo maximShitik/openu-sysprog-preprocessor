@@ -332,7 +332,7 @@ void reset_ast(struct ast *node)
         node->line_type_data.command.opcode_type[i].numberr = 0;
         node->line_type_data.command.opcode_type[i].regg = 0;
     }
-    
+
     memset(node->error.error, 0, sizeof(node->error.error));
     node->error.line_number = 0;
     node->ARE.ARE_type = A;
@@ -553,7 +553,6 @@ int operand_group(struct ast *ast, char *command)
     if (strcmp(command, "rts") == 0 || strcmp(command, "stop") == 0)
         return 0;
 }
-#include <string.h>
 
 void set_command_name(struct ast *ast, char *command)
 {
@@ -576,30 +575,31 @@ void set_command_name(struct ast *ast, char *command)
         }
     }
 
-    ast->line_type_data.command.opcode = 0; 
+    ast->line_type_data.command.opcode = 0;
 }
 
 struct ast two_group_command(struct ast *ast, struct sep_line sep, char *command, int group)
 {
-    char *line_copy;
+
     int current;
     current = 0;
     int i;
+
     if (strcmp(sep.line[1], ",") == 0)
     {
         error_found(ast, "error-extra comma");
         return *ast;
     }
-    if (sep.line[2] == NULL)
-    {
-        error_found(ast, "error-missing operand");
-        return *ast;
-    }
+
     while (strcmp(sep.line[current], command) != 0)
     {
         sep.line[current++];
     }
-    current++;
+    if (sep.line[++current] == NULL)
+    {
+        error_found(ast, "error-missing operand");
+        return *ast;
+    }
 
     if (strcmp(command, "lea") == 0)
         if (system_names(sep.line[current]) != true)
@@ -617,9 +617,19 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep, char *command
     if (system_names(sep.line[current]) == registerr)
     {
         ast->line_type_data.command.opcode_type[0].command_type = reg;
-        ast->line_type_data.command.opcode_type[0].regg = atoi(sep.line[current] + 1);
+        if (strpbrk(sep.line[current], "*") == NULL)
+        {
+            ast->line_type_data.command.opcode_type[0].regg = atoi(sep.line[current] + 1);
+        }
+        else
+            ast->line_type_data.command.opcode_type[0].regg = atoi(sep.line[current] + 2);
     }
-    current++;
+
+    if (sep.line[++current] == NULL)
+    {
+        error_found(ast, "error-missing operand");
+        return *ast;
+    }
     if (strcmp(sep.line[current], ",") != 0)
     {
         error_found(ast, "error-missing comma");
@@ -645,16 +655,17 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep, char *command
         return *ast;
     }
     current--;
-    if (strcmp(command, "not") == 0)
-        ast->line_type_data.command.opcode = nt;
-    else
-        set_command_name(ast, command);
+
+    set_command_name(ast, command);
     if (system_names(sep.line[current]) == registerr)
     {
         ast->line_type_data.command.opcode_type[1].command_type = reg;
-
-        int register_number = atoi(sep.line[current] + 1);
-        ast->line_type_data.command.opcode_type[1].regg = register_number;
+        if (strpbrk(sep.line[current], "*") == NULL)
+        {
+            ast->line_type_data.command.opcode_type[1].regg = atoi(sep.line[current] + 1);
+        }
+        else
+            ast->line_type_data.command.opcode_type[1].regg = atoi(sep.line[current] + 2);
     }
     else if (process_token(sep.line[current], ast) == true)
     {
@@ -668,6 +679,70 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep, char *command
     return *ast;
 }
 
+struct ast one_group_command(struct ast *ast, struct sep_line sep, char *command)
+{
+    int current;
+    current = 0;
+    int i;
+    i=0;
+
+    while (strcmp(sep.line[current], command) != 0)
+    {
+        sep.line[current++];
+    }
+    current++;
+    if (system_names(sep.line[current]) == true)
+    {
+        set_label(ast, sep, current);
+    }
+    if (system_names(sep.line[current]) == registerr)
+    {
+        if (strpbrk(sep.line[current], "*") == NULL && (strcmp(command, "jmp") == 0 || strcmp(command, "bne") == 0))
+        {
+            error_found(ast, "error-invalid operand,register must be indirect");
+            return *ast;
+        }
+        else
+        {
+            ast->line_type_data.command.opcode_type[i].command_type = reg;
+            if (strpbrk(sep.line[current], "*") == NULL)
+            {
+                ast->line_type_data.command.opcode_type[i++].regg = atoi(sep.line[current] + 1);
+            }
+            else
+                ast->line_type_data.command.opcode_type[i].regg = atoi(sep.line[current] + 2);
+        }
+    }
+    if (strcmp(command, "jmp") != 0 || strcmp(command, "bne") != 0)
+    {
+        if (is_int(sep.line[current], ast))
+        {
+            if (strcmp(command, "prn") == 0)
+            {
+                set_data(ast, sep);
+            }
+            else
+            {
+                error_found(ast, "error-invalid operand,only prn can receive numbers");
+                return *ast;
+            }
+        }
+
+        if (sep.line[current + 1] != NULL)
+        {
+            error_found(ast, "error-too many operands");
+            return *ast;
+        }
+        if (strcmp(command, "not") == 0)
+            ast->line_type_data.command.opcode = nt;
+        else
+            set_command_name(ast, command);
+        return *ast;
+    }
+    else
+        error_found(ast, "error-invalid operand");
+    return *ast;
+}
 void set_command(struct ast *ast, struct sep_line sep, char *command)
 {
     int result;
@@ -676,13 +751,17 @@ void set_command(struct ast *ast, struct sep_line sep, char *command)
     {
         two_group_command(ast, sep, command, result);
     }
+    else if (result == 1)
+    {
+        one_group_command(ast, sep, command);
+    }
 }
 
 struct ast line_type(struct sep_line sep, struct ast *ast)
 {
     if (is_note(sep.line[0]))
     {
-        
+
         ast->line_type = note_line;
         return *ast;
     }
@@ -755,7 +834,7 @@ struct ast parse_line(char *line)
 void test_line_type_check()
 {
 
-    char line[50] = " mov STR,r99";
+    char line[50] = "more: mov *r2,r3";
     parse_line(line);
 }
 
