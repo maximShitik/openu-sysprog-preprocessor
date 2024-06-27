@@ -680,11 +680,12 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep, char *command
 }
 
 struct ast one_group_command(struct ast *ast, struct sep_line sep, char *command)
+
 {
     int current;
     current = 0;
     int i;
-    i=0;
+    i = 0;
 
     while (strcmp(sep.line[current], command) != 0)
     {
@@ -743,6 +744,18 @@ struct ast one_group_command(struct ast *ast, struct sep_line sep, char *command
         error_found(ast, "error-invalid operand");
     return *ast;
 }
+struct ast no_operands_command(struct ast *ast, struct sep_line sep, char *command){
+    if (sep.line_number > 1)
+    {
+        error_found(ast, "error-too many operands");
+        return *ast;
+    }
+    if(strcmp(command,"rts")==0||strcmp(command,"stop")==0){
+        set_command_name(ast, command);
+        return *ast;
+    }
+    
+}
 void set_command(struct ast *ast, struct sep_line sep, char *command)
 {
     int result;
@@ -754,6 +767,10 @@ void set_command(struct ast *ast, struct sep_line sep, char *command)
     else if (result == 1)
     {
         one_group_command(ast, sep, command);
+    }
+    else if (result == 0)
+    {
+        no_operands_command(ast, sep, command);
     }
 }
 
@@ -834,7 +851,7 @@ struct ast parse_line(char *line)
 void test_line_type_check()
 {
 
-    char line[50] = "more: mov *r2,r3";
+    char line[50] = "stop";
     parse_line(line);
 }
 
