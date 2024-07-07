@@ -158,9 +158,12 @@ int system_names(char *line)
     char *command_names[] = {"mov", "cmp", "add", "sub", "not", "clr",
                              "lea", "inc", "dec", "jmp", "bne", "red",
                              "prn", "jsr", "rts", "stop"};
+
     char *inst_names[] = {"data", "string", "entry", "extern"};
+
     char *registers[] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
                          "*r0", "*r1", "*r2", "*r3", "*r4", "*r5", "*r6", "*r7"};
+                         
     char *macros[] = {"macr", "endmacr"};
     int i;
     for (i = 0; i < sizeof(command_names) / sizeof(command_names[0]); i++)
@@ -417,7 +420,7 @@ struct ast set_macro(struct ast *ast, struct sep_line sep)
 
 struct ast set_label(struct ast *ast, struct sep_line sep, int index)
 {
-   static char *line_copy;
+    char *line_copy;
     size_t len = strlen(sep.line[index]);
     line_copy = (char *)malloc(len + 1);
     if (line_copy == NULL)
@@ -426,42 +429,36 @@ struct ast set_label(struct ast *ast, struct sep_line sep, int index)
         return *ast;
     }
     strncpy(line_copy, sep.line[index], len);
-    line_copy[len] = '\0';
-
     if (line_copy[len - 1] == ':')
     {
         line_copy[len - 1] = '\0';
     }
-
-    if (ast->line_type == inst_line)
+    if (ast->line_type_data.inst.label_array[0] == NULL)
     {
-        if (ast->line_type_data.inst.label_array[0] == NULL)
+        if (ast->line_type == inst_line)
         {
             ast->line_type_data.inst.label_array[0] = line_copy;
             ast->line_type_data.inst.label_array[1] = NULL;
         }
-        else
+        else if (ast->line_type == command_line)
         {
-            ast->line_type_data.inst.label_array[1] = line_copy;
+            ast->line_type_data.command.opcode_type[0].command_type = label;
+            ast->line_type_data.command.opcode_type[0].labell[0] = line_copy;
         }
+    }
+    else if (ast->line_type == inst_line)
+    {
+        ast->line_type_data.inst.label_array[1] = line_copy;
     }
     else if (ast->line_type == command_line)
     {
-        if (ast->line_type_data.command.opcode_type[0].labell[0] == NULL)
-        {
-            ast->line_type_data.command.opcode_type[0].labell[0] = line_copy;
-            ast->line_type_data.command.opcode_type[0].command_type = label;
-            ast->line_type_data.command.opcode_type[0].labell[1] = NULL;
-        }
-        else
-        {
-            ast->line_type_data.command.opcode_type[0].labell[1] = line_copy;
-            ast->line_type_data.command.opcode_type[0].command_type = label;
-        }
+
+        ast->line_type_data.command.opcode_type[0].labell[1] = line_copy;
     }
+
     else
     {
-        error_found(ast, "undefined line type");
+        error_found(ast, "error-undefinded line type");
         free(line_copy);
         return *ast;
     }
@@ -798,7 +795,7 @@ struct ast one_group_command(struct ast *ast, struct sep_line sep,
 }
 void no_operands_command(struct ast *ast, struct sep_line sep, char *command)
 {
-    if (sep.line_number > 1)
+    if (sep.line_number > 2)
     {
         error_found(ast, "error-too many operands");
         return;
@@ -893,7 +890,6 @@ struct ast parse_line(char *line)
         return ast;
     }
     line_type(separated, &ast);
-    
     return ast;
 }
 
