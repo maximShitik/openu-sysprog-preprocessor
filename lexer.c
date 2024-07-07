@@ -1,3 +1,5 @@
+#ifndef LEXER_C
+#define LEXER_C
 #include "lexer.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -36,8 +38,20 @@ typedef enum bool
 
 /*reset the ast but without error*/
 void error_found(struct ast *ast, char *error_message);
+struct ast set_label(struct ast *ast, struct sep_line sep, int index);
 
 struct ast set_lea(struct ast *ast, struct sep_line sep);
+
+char *duplicate_string(const char *source)
+{
+    size_t len = strlen(source);
+    char *dest = (char *)malloc(len + 1);
+    if (dest != NULL)
+    {
+        strcpy(dest, source);
+    }
+    return dest;
+}
 /**
  * @brief Trimming the white spaces in the line.
  *
@@ -141,9 +155,12 @@ int contains_uppercase(const char *str)
  */
 int system_names(char *line)
 {
-    char *command_names[] = {"mov", "cmp", "add", "sub", "not", "clr", "lea", "inc", "dec", "jmp", "bne", "red", "prn", "jsr", "rts", "stop"};
-    char *inst_names[] = {"data", "string", "entry", "extrn"};
-    char *registers[] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "*r0", "*r1", "*r2", "*r3", "*r4", "*r5", "*r6", "*r7"};
+    char *command_names[] = {"mov", "cmp", "add", "sub", "not", "clr",
+                             "lea", "inc", "dec", "jmp", "bne", "red",
+                             "prn", "jsr", "rts", "stop"};
+    char *inst_names[] = {"data", "string", "entry", "extern"};
+    char *registers[] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
+                         "*r0", "*r1", "*r2", "*r3", "*r4", "*r5", "*r6", "*r7"};
     char *macros[] = {"macr", "endmacr"};
     int i;
     for (i = 0; i < sizeof(command_names) / sizeof(command_names[0]); i++)
@@ -208,11 +225,13 @@ int process_token(char *line, struct ast *ast)
         free(line_copy);
         if (result == true)
         {
+
             return true;
         }
         else
         {
             error_found(ast, "error-invalid label name");
+
             return false;
         }
     }
@@ -229,7 +248,6 @@ int process_token(char *line, struct ast *ast)
         if (contains_uppercase(line_copy))
         {
             error_found(ast, "error-invalid instruction name");
-
             free(line_copy);
             return false;
         }
@@ -243,6 +261,7 @@ int process_token(char *line, struct ast *ast)
         else if (result == true)
         {
             error_found(ast, "error-invalid instruction name");
+            free(line_copy);
             return false;
         }
     }
@@ -258,7 +277,9 @@ int process_token(char *line, struct ast *ast)
     else
 
         error_found(ast, "error-undefinded token");
+
     strcpy(ast->error.error_token, line); /*checking if the error causing token is saved as a macro before*/
+
     return 0;
 }
 
@@ -294,10 +315,7 @@ int is_string(char *line)
     return line[0] == '"' && line[strlen(line) - 1] == '"';
 }
 
-int is_note(char *line)
-{
-    return line[0] == ';';
-}
+int is_note(char *line) { return line[0] == ';'; }
 
 /**
  * Resets a string array to NULL values.
@@ -323,7 +341,8 @@ void reset_ast(struct ast *node)
     reset_string_array(node->line_type_data.inst.label_array, 2);
     reset_string_array(node->line_type_data.inst.string_array, 50);
     node->line_type_data.command.opcode = 0;
-    memset(node->line_type_data.inst.data_array, 0, sizeof(node->line_type_data.inst.data_array));
+    memset(node->line_type_data.inst.data_array, 0,
+           sizeof(node->line_type_data.inst.data_array));
 
     for (i = 0; i < 2; i++)
     {
@@ -366,7 +385,10 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
     }
     ast->line_type_data.inst.label_array[0] = sep.line[0];
     ast->line_type_data.inst.label_array[1] = NULL;
-    strcmp(sep.line[0], "entry") == 0 ? (ast->line_type_data.inst.inst_type = entry, ast->ARE.ARE_type = R) : (ast->line_type_data.inst.inst_type = extrn, ast->ARE.ARE_type = E);
+    strcmp(sep.line[0], "entry") == 0
+        ? (ast->line_type_data.inst.inst_type = extrn, ast->ARE.ARE_type = E)
+        : (ast->line_type_data.inst.inst_type = entry, ast->ARE.ARE_type = R);
+    set_label(ast, sep, 1);
 
     return *ast;
 }
@@ -395,7 +417,7 @@ struct ast set_macro(struct ast *ast, struct sep_line sep)
 
 struct ast set_label(struct ast *ast, struct sep_line sep, int index)
 {
-    char *line_copy;
+   static char *line_copy;
     size_t len = strlen(sep.line[index]);
     line_copy = (char *)malloc(len + 1);
     if (line_copy == NULL)
@@ -404,36 +426,43 @@ struct ast set_label(struct ast *ast, struct sep_line sep, int index)
         return *ast;
     }
     strncpy(line_copy, sep.line[index], len);
+    line_copy[len] = '\0';
+
     if (line_copy[len - 1] == ':')
     {
         line_copy[len - 1] = '\0';
     }
-    if (ast->line_type_data.inst.label_array[0] == NULL)
+
+    if (ast->line_type == inst_line)
     {
-        if (ast->line_type == inst_line)
+        if (ast->line_type_data.inst.label_array[0] == NULL)
         {
             ast->line_type_data.inst.label_array[0] = line_copy;
             ast->line_type_data.inst.label_array[1] = NULL;
         }
-        else if (ast->line_type == command_line)
+        else
         {
-            ast->line_type_data.command.opcode_type[0].command_type = label;
-            ast->line_type_data.command.opcode_type[0].labell[0] = line_copy;
+            ast->line_type_data.inst.label_array[1] = line_copy;
         }
-    }
-    else if (ast->line_type == inst_line)
-    {
-        ast->line_type_data.inst.label_array[1] = line_copy;
     }
     else if (ast->line_type == command_line)
     {
-
-        ast->line_type_data.command.opcode_type[0].labell[1] = line_copy;
+        if (ast->line_type_data.command.opcode_type[0].labell[0] == NULL)
+        {
+            ast->line_type_data.command.opcode_type[0].labell[0] = line_copy;
+            ast->line_type_data.command.opcode_type[0].command_type = label;
+            ast->line_type_data.command.opcode_type[0].labell[1] = NULL;
+        }
+        else
+        {
+            ast->line_type_data.command.opcode_type[0].labell[1] = line_copy;
+            ast->line_type_data.command.opcode_type[0].command_type = label;
+        }
     }
-
     else
     {
-        error_found(ast, "error-undefinded line type");
+        error_found(ast, "undefined line type");
+        free(line_copy);
         return *ast;
     }
 
@@ -466,7 +495,9 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
             else
                 continue;
         }
-        else if ((i + 1) < sep.line_number && (!is_int(sep.line[i], ast) && strcmp(sep.line[i + 1], ",") == 0))
+        else if ((i + 1) < sep.line_number &&
+                 (!is_int(sep.line[i], ast) &&
+                  strcmp(sep.line[i + 1], ",") == 0))
         {
             error_found(ast, "error-comma before first number");
             return *ast;
@@ -484,11 +515,10 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
 struct ast set_string(struct ast *ast, struct sep_line sep)
 {
     int i, j, k;
-    j = 0;
+
     char *string_start;
     size_t len;
-    int string_counter;
-    string_counter = 0;
+    j = 0;
     for (i = 0; i < sep.line_number; i++)
     {
         if (is_string(sep.line[i]))
@@ -518,6 +548,7 @@ struct ast set_string(struct ast *ast, struct sep_line sep)
     if (i + 1 < sep.line_number && is_string(sep.line[i + 1]))
     {
         error_found(ast, "error-too many strings");
+        free(ast->line_type_data.inst.string_array[j]);
         return *ast;
     }
 
@@ -527,16 +558,19 @@ struct ast set_string(struct ast *ast, struct sep_line sep)
 
 void set_instruction(struct ast *ast, struct sep_line sep)
 {
-    if (strcmp(sep.line[0], ".entry") == 0 || strcmp(sep.line[0], ".extern") == 0)
+    if (strcmp(sep.line[0], ".entry") == 0 ||
+        strcmp(sep.line[0], ".extern") == 0)
     {
         set_entry_extern(ast, sep);
     }
 
-    else if (strcmp(sep.line[1], ".data") == 0 || strcmp(sep.line[0], ".data") == 0)
+    else if (strcmp(sep.line[1], ".data") == 0 ||
+             strcmp(sep.line[0], ".data") == 0)
     {
         set_data(ast, sep);
     }
-    else if (strcmp(sep.line[1], ".string") == 0 || strcmp(sep.line[0], ".string") == 0)
+    else if (strcmp(sep.line[1], ".string") == 0 ||
+             strcmp(sep.line[0], ".string") == 0)
     {
         set_string(ast, sep);
     }
@@ -544,14 +578,23 @@ void set_instruction(struct ast *ast, struct sep_line sep)
 
 int operand_group(struct ast *ast, char *command)
 {
-    if (strcmp(command, "mov") == 0 || strcmp(command, "cmp") == 0 || strcmp(command, "add") == 0 || strcmp(command, "sub") == 0 || strcmp(command, "lea") == 0)
+    if (strcmp(command, "mov") == 0 || strcmp(command, "cmp") == 0 ||
+        strcmp(command, "add") == 0 || strcmp(command, "sub") == 0 ||
+        strcmp(command, "lea") == 0)
     {
         return 2;
     }
-    if (strcmp(command, "clr") == 0 || strcmp(command, "not") == 0 || strcmp(command, "inc") == 0 || strcmp(command, "dec") == 0 || strcmp(command, "jmp") == 0 || strcmp(command, "bne") == 0 || strcmp(command, "red") == 0 || strcmp(command, "prn") == 0 || strcmp(command, "jsr") == 0)
+    if (strcmp(command, "clr") == 0 || strcmp(command, "not") == 0 ||
+        strcmp(command, "inc") == 0 || strcmp(command, "dec") == 0 ||
+        strcmp(command, "jmp") == 0 || strcmp(command, "bne") == 0 ||
+        strcmp(command, "red") == 0 || strcmp(command, "prn") == 0 ||
+        strcmp(command, "jsr") == 0)
         return 1;
     if (strcmp(command, "rts") == 0 || strcmp(command, "stop") == 0)
         return 0;
+    else
+        error_found(ast, "error-undefinded command");
+    return -1;
 }
 
 void set_command_name(struct ast *ast, char *command)
@@ -562,8 +605,7 @@ void set_command_name(struct ast *ast, char *command)
     {
         const char *name;
         int opcode;
-    } command_map[] = {
-        {"mov", mov}, {"cmp", cmp}, {"add", add}, {"sub", sub}, {"lea", lea}, {"not", nt}, {"clr", clr}, {"inc", inc}, {"dec", dec}, {"jmp", jmp}, {"bne", bne}, {"red", red}, {"prn", prn}, {"jsr", jsr}, {"rts", rts}, {"stop", stop}};
+    } command_map[] = {{"mov", mov}, {"cmp", cmp}, {"add", add}, {"sub", sub}, {"lea", lea}, {"not", nt}, {"clr", clr}, {"inc", inc}, {"dec", dec}, {"jmp", jmp}, {"bne", bne}, {"red", red}, {"prn", prn}, {"jsr", jsr}, {"rts", rts}, {"stop", stop}};
 
     num_commands = sizeof(command_map) / sizeof(command_map[0]);
     for (i = 0; i < num_commands; i++)
@@ -578,12 +620,12 @@ void set_command_name(struct ast *ast, char *command)
     ast->line_type_data.command.opcode = 0;
 }
 
-struct ast two_group_command(struct ast *ast, struct sep_line sep, char *command, int group)
+struct ast two_group_command(struct ast *ast, struct sep_line sep,
+                             char *command, int group)
 {
 
     int current;
     current = 0;
-    int i;
 
     if (strcmp(sep.line[1], ",") == 0)
     {
@@ -593,7 +635,7 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep, char *command
 
     while (strcmp(sep.line[current], command) != 0)
     {
-        sep.line[current++];
+        current++;
     }
     if (sep.line[++current] == NULL)
     {
@@ -612,17 +654,20 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep, char *command
     if (is_int(sep.line[current], ast))
     {
         ast->line_type_data.command.opcode_type[0].command_type = number;
-        ast->line_type_data.command.opcode_type[0].numberr = atoi(sep.line[current]);
+        ast->line_type_data.command.opcode_type[0].numberr =
+            atoi(sep.line[current]);
     }
     if (system_names(sep.line[current]) == registerr)
     {
         ast->line_type_data.command.opcode_type[0].command_type = reg;
         if (strpbrk(sep.line[current], "*") == NULL)
         {
-            ast->line_type_data.command.opcode_type[0].regg = atoi(sep.line[current] + 1);
+            ast->line_type_data.command.opcode_type[0].regg =
+                atoi(sep.line[current] + 1);
         }
         else
-            ast->line_type_data.command.opcode_type[0].regg = atoi(sep.line[current] + 2);
+            ast->line_type_data.command.opcode_type[0].regg =
+                atoi(sep.line[current] + 2);
     }
 
     if (sep.line[++current] == NULL)
@@ -662,12 +707,14 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep, char *command
         ast->line_type_data.command.opcode_type[1].command_type = reg;
         if (strpbrk(sep.line[current], "*") == NULL)
         {
-            ast->line_type_data.command.opcode_type[1].regg = atoi(sep.line[current] + 1);
+            ast->line_type_data.command.opcode_type[1].regg =
+                atoi(sep.line[current] + 1);
         }
         else
-            ast->line_type_data.command.opcode_type[1].regg = atoi(sep.line[current] + 2);
+            ast->line_type_data.command.opcode_type[1].regg =
+                atoi(sep.line[current] + 2);
     }
-    else if (process_token(sep.line[current], ast) == true)
+    else if (system_names(sep.line[current]) == true)
     {
         set_label(ast, sep, current);
     }
@@ -679,17 +726,19 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep, char *command
     return *ast;
 }
 
-struct ast one_group_command(struct ast *ast, struct sep_line sep, char *command)
+struct ast one_group_command(struct ast *ast, struct sep_line sep,
+                             char *command)
 
 {
+    int i;
     int current;
     current = 0;
-    int i;
+
     i = 0;
 
     while (strcmp(sep.line[current], command) != 0)
     {
-        sep.line[current++];
+        current++;
     }
     current++;
     if (system_names(sep.line[current]) == true)
@@ -698,7 +747,8 @@ struct ast one_group_command(struct ast *ast, struct sep_line sep, char *command
     }
     if (system_names(sep.line[current]) == registerr)
     {
-        if (strpbrk(sep.line[current], "*") == NULL && (strcmp(command, "jmp") == 0 || strcmp(command, "bne") == 0))
+        if (strpbrk(sep.line[current], "*") == NULL &&
+            (strcmp(command, "jmp") == 0 || strcmp(command, "bne") == 0))
         {
             error_found(ast, "error-invalid operand,register must be indirect");
             return *ast;
@@ -708,10 +758,12 @@ struct ast one_group_command(struct ast *ast, struct sep_line sep, char *command
             ast->line_type_data.command.opcode_type[i].command_type = reg;
             if (strpbrk(sep.line[current], "*") == NULL)
             {
-                ast->line_type_data.command.opcode_type[i++].regg = atoi(sep.line[current] + 1);
+                ast->line_type_data.command.opcode_type[i++].regg =
+                    atoi(sep.line[current] + 1);
             }
             else
-                ast->line_type_data.command.opcode_type[i].regg = atoi(sep.line[current] + 2);
+                ast->line_type_data.command.opcode_type[i].regg =
+                    atoi(sep.line[current] + 2);
         }
     }
     if (strcmp(command, "jmp") != 0 || strcmp(command, "bne") != 0)
@@ -744,17 +796,18 @@ struct ast one_group_command(struct ast *ast, struct sep_line sep, char *command
         error_found(ast, "error-invalid operand");
     return *ast;
 }
-struct ast no_operands_command(struct ast *ast, struct sep_line sep, char *command){
+void no_operands_command(struct ast *ast, struct sep_line sep, char *command)
+{
     if (sep.line_number > 1)
     {
         error_found(ast, "error-too many operands");
-        return *ast;
+        return;
     }
-    if(strcmp(command,"rts")==0||strcmp(command,"stop")==0){
+    if (strcmp(command, "rts") == 0 || strcmp(command, "stop") == 0)
+    {
         set_command_name(ast, command);
-        return *ast;
+        return;
     }
-    
 }
 void set_command(struct ast *ast, struct sep_line sep, char *command)
 {
@@ -795,10 +848,10 @@ struct ast line_type(struct sep_line sep, struct ast *ast)
     }
     if (process_token(sep.line[0], ast) == lable)
     {
-        ast->line_type = inst_line;
 
         if (process_token(sep.line[1], ast) == instruction)
         {
+            ast->line_type = inst_line;
             set_label(ast, sep, 0);
             set_instruction(ast, sep);
             return *ast;
@@ -840,28 +893,8 @@ struct ast parse_line(char *line)
         return ast;
     }
     line_type(separated, &ast);
-
+    
     return ast;
 }
 
-/*test functions*/
-/**
- * Tests the line_type_check function.
- */
-void test_line_type_check()
-{
-
-    char line[50] = "stop";
-    parse_line(line);
-}
-
-/**
- * Main function to run all tests.
- */
-int main()
-{
-
-    test_line_type_check();
-    printf("All tests completed.\n");
-    return 0;
-}
+#endif
