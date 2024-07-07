@@ -163,7 +163,6 @@ int system_names(char *line)
 
     char *registers[] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
                          "*r0", "*r1", "*r2", "*r3", "*r4", "*r5", "*r6", "*r7"};
-                         
     char *macros[] = {"macr", "endmacr"};
     int i;
     for (i = 0; i < sizeof(command_names) / sizeof(command_names[0]); i++)
@@ -382,15 +381,16 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
 
         return *ast;
     }
-    if (sep.line_number == 2)
+
+    if (strcmp(sep.line[0], ".entry") == 0 ||strcmp(sep.line[0], "entry") == 0)
     {
-        ast->line_type_data.inst.label_array[0] = sep.line[1];
+
+        ast->line_type_data.inst.inst_type = entry, ast->ARE.ARE_type = R;
     }
-    ast->line_type_data.inst.label_array[0] = sep.line[0];
-    ast->line_type_data.inst.label_array[1] = NULL;
-    strcmp(sep.line[0], "entry") == 0
-        ? (ast->line_type_data.inst.inst_type = extrn, ast->ARE.ARE_type = E)
-        : (ast->line_type_data.inst.inst_type = entry, ast->ARE.ARE_type = R);
+    else
+    {
+        ast->line_type_data.inst.inst_type = extrn, ast->ARE.ARE_type = E;
+    }
     set_label(ast, sep, 1);
 
     return *ast;
@@ -420,50 +420,56 @@ struct ast set_macro(struct ast *ast, struct sep_line sep)
 
 struct ast set_label(struct ast *ast, struct sep_line sep, int index)
 {
-    char *line_copy;
     size_t len = strlen(sep.line[index]);
-    line_copy = (char *)malloc(len + 1);
-    if (line_copy == NULL)
+
+    /* Handle case where line ends with ':'*/
+    if (len > 0 && sep.line[index][len - 1] == ':')
     {
-        error_found(ast, "memory allocation error");
-        return *ast;
-    }
-    strncpy(line_copy, sep.line[index], len);
-    if (line_copy[len - 1] == ':')
-    {
-        line_copy[len - 1] = '\0';
+        len--;
     }
     if (ast->line_type_data.inst.label_array[0] == NULL)
     {
         if (ast->line_type == inst_line)
         {
-            ast->line_type_data.inst.label_array[0] = line_copy;
+            ast->line_type_data.inst.label_array[0] = sep.line[index];
             ast->line_type_data.inst.label_array[1] = NULL;
         }
         else if (ast->line_type == command_line)
         {
             ast->line_type_data.command.opcode_type[0].command_type = label;
-            ast->line_type_data.command.opcode_type[0].labell[0] = line_copy;
+            ast->line_type_data.command.opcode_type[0].labell[0] = sep.line[index];
         }
     }
     else if (ast->line_type == inst_line)
     {
-        ast->line_type_data.inst.label_array[1] = line_copy;
+        ast->line_type_data.inst.label_array[1] = sep.line[index];
     }
     else if (ast->line_type == command_line)
     {
-
-        ast->line_type_data.command.opcode_type[0].labell[1] = line_copy;
+        ast->line_type_data.command.opcode_type[1].command_type = label;
+        ast->line_type_data.command.opcode_type[1].labell[0] = sep.line[index];
     }
 
     else
     {
-        error_found(ast, "error-undefinded line type");
-        free(line_copy);
+        error_found(ast, "undefined line type");
         return *ast;
     }
 
     return *ast;
+}
+
+int check_command_or_instruction(struct ast *ast)
+{
+    if (ast->line_type == inst_line)
+    {
+        return instruction;
+    }
+    if (ast->line_type == command_line)
+    {
+        return command;
+    }
+    return -1;
 }
 
 struct ast set_data(struct ast *ast, struct sep_line sep)
@@ -473,28 +479,57 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
     j = 0;
     for (i = 0; i < sep.line_number; i++)
     {
+        // Check if the current string is an integer
         if (is_int(sep.line[i], ast))
         {
+            // Check for missing comma error
             if ((i + 1) < sep.line_number && is_int(sep.line[i + 1], ast))
             {
                 error_found(ast, "error-missing comma");
                 return *ast;
             }
-            ast->line_type_data.inst.data_array[j++] = atoi(sep.line[i]);
+
+            // Remove '#' character if present
+            char *num_str = sep.line[i];
+            if (num_str[0] == '#')
+            {
+                num_str++; // Move past the '#'
+            }
+
+            // Convert the string to an integer and store it
+            if (check_command_or_instruction(ast) == instruction)
+            {
+                ast->line_type_data.inst.data_array[j++] = atoi(num_str);
+            }
+            else if (check_command_or_instruction(ast) == command)
+            {
+                if (ast->line_type_data.command.opcode_type[j].command_type == none)
+                {
+                    ast->line_type_data.command.opcode_type[j].command_type = number;
+                    ast->line_type_data.command.opcode_type[j].numberr = atoi(num_str);
+                }
+                else
+                {
+                    ast->line_type_data.command.opcode_type[++j].command_type = number;
+                    ast->line_type_data.command.opcode_type[j].numberr = atoi(num_str);
+                }
+            }
         }
         else if (strcmp(sep.line[i], ",") == 0)
         {
+            // Check for too many commas error
             if ((i + 1) < sep.line_number && strcmp(sep.line[i + 1], ",") == 0)
             {
                 error_found(ast, "error-too many commas");
                 return *ast;
             }
+            // Continue processing if single comma found
             else
                 continue;
         }
         else if ((i + 1) < sep.line_number &&
                  (!is_int(sep.line[i], ast) &&
-                  strcmp(sep.line[i + 1], ",") == 0))
+                  strcmp(sep.line[i + 1], ",") == 0) && check_command_or_instruction(ast) == instruction)
         {
             error_found(ast, "error-comma before first number");
             return *ast;
@@ -505,6 +540,8 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
             return *ast;
         }
     }
+
+    // Set instruction type to 'data'
     ast->line_type_data.inst.inst_type = data;
     return *ast;
 }
@@ -523,7 +560,7 @@ struct ast set_string(struct ast *ast, struct sep_line sep)
             break;
         }
     }
-
+    
     if (i < sep.line_number && is_string(sep.line[i]))
     {
 
@@ -650,9 +687,7 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep,
         set_label(ast, sep, current);
     if (is_int(sep.line[current], ast))
     {
-        ast->line_type_data.command.opcode_type[0].command_type = number;
-        ast->line_type_data.command.opcode_type[0].numberr =
-            atoi(sep.line[current]);
+       set_data(ast, sep);
     }
     if (system_names(sep.line[current]) == registerr)
     {
@@ -683,14 +718,7 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep,
         error_found(ast, "error-missing operand");
         return *ast;
     }
-    if (strcmp(command, "cmp") != 0)
-    {
-        if (is_int(sep.line[current], ast))
-        {
-            error_found(ast, "error-invalid operand,command cant receive numbers");
-            return *ast;
-        }
-    }
+
     if (sep.line[++current] != NULL)
     {
         error_found(ast, "error-too many operands");
@@ -699,6 +727,15 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep,
     current--;
 
     set_command_name(ast, command);
+    if (is_int(sep.line[current], ast))
+    {
+        set_data(ast, sep);
+        if (strcmp(command, "cmp") != 0)
+        {
+            error_found(ast, "error-invalid operand,command cant receive numbers");
+            return *ast;
+        }
+    }
     if (system_names(sep.line[current]) == registerr)
     {
         ast->line_type_data.command.opcode_type[1].command_type = reg;
@@ -711,15 +748,11 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep,
             ast->line_type_data.command.opcode_type[1].regg =
                 atoi(sep.line[current] + 2);
     }
-    else if (system_names(sep.line[current]) == true)
+    else if (system_names(sep.line[current]) == true && !is_int(sep.line[current], ast))
     {
         set_label(ast, sep, current);
     }
-    else
-    {
-        error_found(ast, "error-invalid operand");
-        return *ast;
-    }
+    set_command_name(ast, command);
     return *ast;
 }
 
@@ -738,7 +771,7 @@ struct ast one_group_command(struct ast *ast, struct sep_line sep,
         current++;
     }
     current++;
-    if (system_names(sep.line[current]) == true)
+    if (system_names(sep.line[current]) == true && !is_int(sep.line[current], ast))
     {
         set_label(ast, sep, current);
     }
