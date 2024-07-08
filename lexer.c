@@ -19,7 +19,6 @@ struct sep_line
 typedef enum return_types
 {
     error = 1,
-    note,
     instruction,
     command,
     empty,
@@ -317,7 +316,7 @@ int is_string(char *line)
     return line[0] == '"' && line[strlen(line) - 1] == '"';
 }
 
-int is_note(char *line) { return line[0] == ';'; }
+
 
 /**
  * Resets a string array to NULL values.
@@ -861,12 +860,8 @@ void set_command(struct ast *ast, struct sep_line sep, char *command)
 
 struct ast line_type(struct sep_line sep, struct ast *ast)
 {
-    if (is_note(sep.line[0]))
-    {
+   
 
-        ast->line_type = note_line;
-        return *ast;
-    }
     if (process_token(sep.line[0], ast) == macro)
     {
         set_macro(ast, sep);
