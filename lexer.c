@@ -354,7 +354,7 @@ void reset_ast(struct ast *node)
         node->line_type_data.command.opcode_type[i].regg = 0;
     }
 
-    memset(node->error.error, 0, sizeof(node->error.error));
+    memset(node->error.type, 0, sizeof(node->error.type));
     node->error.line_number = 0;
     node->ARE.ARE_type = A;
 }
@@ -364,7 +364,7 @@ void error_found(struct ast *ast, char *error_message)
     reset_ast(ast);
     ast->line_type = error_line;
     ast->error.line_number = 1;
-    strcpy(ast->error.error, error_message);
+    strcpy(ast->error.type, error_message);
 }
 
 struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
@@ -382,7 +382,7 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
         return *ast;
     }
 
-    if (strcmp(sep.line[0], ".entry") == 0 ||strcmp(sep.line[0], "entry") == 0)
+    if (strcmp(sep.line[0], ".entry") == 0 || strcmp(sep.line[0], "entry") == 0)
     {
 
         ast->line_type_data.inst.inst_type = entry, ast->ARE.ARE_type = R;
@@ -529,7 +529,8 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
         }
         else if ((i + 1) < sep.line_number &&
                  (!is_int(sep.line[i], ast) &&
-                  strcmp(sep.line[i + 1], ",") == 0) && check_command_or_instruction(ast) == instruction)
+                  strcmp(sep.line[i + 1], ",") == 0) &&
+                 check_command_or_instruction(ast) == instruction)
         {
             error_found(ast, "error-comma before first number");
             return *ast;
@@ -560,7 +561,7 @@ struct ast set_string(struct ast *ast, struct sep_line sep)
             break;
         }
     }
-    
+
     if (i < sep.line_number && is_string(sep.line[i]))
     {
 
@@ -678,7 +679,7 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep,
     }
 
     if (strcmp(command, "lea") == 0)
-        if (system_names(sep.line[current]) != true)
+        if (system_names(sep.line[current]) != true || is_int(sep.line[current], ast))
         {
             error_found(ast, "error-invalid operand");
             return *ast;
@@ -687,7 +688,7 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep,
         set_label(ast, sep, current);
     if (is_int(sep.line[current], ast))
     {
-       set_data(ast, sep);
+        set_data(ast, sep);
     }
     if (system_names(sep.line[current]) == registerr)
     {
@@ -726,7 +727,6 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep,
     }
     current--;
 
-    set_command_name(ast, command);
     if (is_int(sep.line[current], ast))
     {
         set_data(ast, sep);
@@ -777,7 +777,7 @@ struct ast one_group_command(struct ast *ast, struct sep_line sep,
     }
     if (system_names(sep.line[current]) == registerr)
     {
-        if (strpbrk(sep.line[current], "*") == NULL &&
+        if (strpbrk(sep.line[current], "*") &&
             (strcmp(command, "jmp") == 0 || strcmp(command, "bne") == 0))
         {
             error_found(ast, "error-invalid operand,register must be indirect");
@@ -828,16 +828,18 @@ struct ast one_group_command(struct ast *ast, struct sep_line sep,
 }
 void no_operands_command(struct ast *ast, struct sep_line sep, char *command)
 {
-    if (sep.line_number > 2)
+    int current;
+    while (strcmp(sep.line[current], command) != 0)
+    {
+        current++;
+    }
+    if (sep.line[current + 1] != NULL)
     {
         error_found(ast, "error-too many operands");
         return;
     }
-    if (strcmp(command, "rts") == 0 || strcmp(command, "stop") == 0)
-    {
-        set_command_name(ast, command);
-        return;
-    }
+    set_command_name(ast, command);
+    return;
 }
 void set_command(struct ast *ast, struct sep_line sep, char *command)
 {
