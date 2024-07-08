@@ -1,3 +1,5 @@
+#ifndef LEXER_H
+#define LEXER_H
 #define MAX_LINE 80
 
 
@@ -8,7 +10,6 @@ typedef struct ast
     {
 
         error_line = 1,
-        note_line,
         inst_line,
         command_line,
         empty_line,
@@ -83,7 +84,7 @@ typedef struct ast
     } line_type_data;
     struct
     {
-        char error[300];
+        char type[300];
         char error_token[80];
         int line_number;
     } error;
@@ -106,3 +107,4 @@ typedef struct ast
 } ast;
 
 struct ast parse_line(char *line);
+#endif
