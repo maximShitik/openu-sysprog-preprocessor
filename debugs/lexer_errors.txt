@@ -1,0 +1,22 @@
+
+; note
+
+;instructions 
+.DATA 2,4
+lable .DATA 2,5
+.data ,7,5
+.data 7,5,
+.data 7,5.12
+.data 9 +17, −57, g
+
+.String "sd" "sd"
+.extern r3
+
+;command
+HELLO: add r7, B,
+END: Stop
+mov r3,1
+lea 4,r4
+lea hello,4
+clr #4
+
