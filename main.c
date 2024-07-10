@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,14 +31,13 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    hash *hash_table[HASH_SIZE] = {NULL}; 
+    hash *hash_table[HASH_SIZE] = {NULL};
     char line[MAX_LINE];
     find_macro(line, hash_table, as_file);
-
+    free_memory(hash_table);
     fclose(as_file);
     fclose(am_file);
 
-    
     FILE *parsed_file = fopen("output.am", "r");
     if (parsed_file == NULL)
     {
@@ -45,16 +45,14 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    
     while (fgets(parsed_line, sizeof(parsed_line), parsed_file))
     {
-        
+
         parsed_line[strcspn(parsed_line, "\r\n")] = '\0';
-        
+
         if (parsed_line[0] == '\0' || parsed_line[0] == ';')
             continue;
 
-        
         struct ast result = parse_line(parsed_line);
         if (result.line_type == error_line)
         {
