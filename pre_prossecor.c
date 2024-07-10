@@ -1,7 +1,8 @@
-/*this function will resive a file and folde the macros to another file*/
-
 #include "lexer.c"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #define HASH_SIZE 100
 
 enum
@@ -11,13 +12,18 @@ enum
     regular_line = -2,
     endmacro = -3,
     macro_defenition = -4,
-
 };
+
+typedef struct line_node
+{
+    char *line_data;
+    struct line_node *next;
+} line_node;
 
 typedef struct hash
 {
     char *macro_name;
-    char *line_data;
+    line_node *lines;
     struct hash *next;
 } hash;
 
@@ -34,8 +40,7 @@ typedef struct hash_table
  */
 void hash_reset(hash *hash_table[])
 {
-    int i;
-    for (i = 0; i < HASH_SIZE; i++)
+    for (int i = 0; i < HASH_SIZE; i++)
     {
         hash_table[i] = NULL;
     }
@@ -49,27 +54,25 @@ void hash_reset(hash *hash_table[])
  */
 unsigned int hash_function(char *macro_name)
 {
-    unsigned int hash;
-    hash = 0;
+    unsigned int hash = 0;
     while (*macro_name)
     {
-        hash = (hash << 3) + *macro_name++; /*multiplying the number by 8 and addeding the ASCII value*/
+        hash = (hash << 3) + *macro_name++;
     }
-    return hash % HASH_SIZE; /*ensure that the value is in the hash range*/
+    return hash % HASH_SIZE;
 }
 
 void insert_to_hash(char *data, hash *hash_table[], int index, int is_macro_name)
 {
-    hash *new_hash;
+    hash *new_hash = (hash *)malloc(sizeof(hash));
+    if (new_hash == NULL)
+    {
+        printf("Memory allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
     if (is_macro_name)
     {
-        new_hash = (hash *)malloc(sizeof(hash));
-        if (new_hash == NULL)
-        {
-            printf("Memory allocation error\n");
-            exit(EXIT_FAILURE);
-        }
-
         new_hash->macro_name = malloc(strlen(data) + 1);
         if (new_hash->macro_name == NULL)
         {
@@ -77,101 +80,120 @@ void insert_to_hash(char *data, hash *hash_table[], int index, int is_macro_name
             exit(EXIT_FAILURE);
         }
         strcpy(new_hash->macro_name, data);
+        new_hash->lines = NULL;
     }
     else
     {
-        new_hash->line_data = malloc(strlen(data) + 1);
-        if (new_hash->line_data == NULL)
+        line_node *new_line = (line_node *)malloc(sizeof(line_node));
+        if (new_line == NULL)
         {
             printf("Memory allocation error\n");
             exit(EXIT_FAILURE);
         }
-        strcpy(new_hash->line_data, data);
+        new_line->line_data = malloc(strlen(data) + 1);
+        if (new_line->line_data == NULL)
+        {
+            printf("Memory allocation error\n");
+            exit(EXIT_FAILURE);
+        }
+        strcpy(new_line->line_data, data);
+        new_line->next = NULL;
+
+        hash *current = hash_table[index];
+        while (current->next != NULL)
+        {
+            current = current->next;
+        }
+
+        if (current->lines == NULL)
+        {
+            current->lines = new_line;
+        }
+        else
+        {
+            line_node *current_line = current->lines;
+            while (current_line->next != NULL)
+            {
+                current_line = current_line->next;
+            }
+            current_line->next = new_line;
+        }
+
+        free(new_hash);
+        return;
     }
 
-    new_hash->next = NULL;
-
-    if (hash_table[index] == NULL)
-    {
-        hash_table[index] = new_hash;
-    }
-    else
-    {
-        new_hash->next = hash_table[index];
-        hash_table[index] = new_hash;
-    }
+    new_hash->next = hash_table[index];
+    hash_table[index] = new_hash;
 }
 
-/**
- * @brief freeying the memoery aloccated for the hash table and its nodes
- *
- * @param hash_table
- */
 void free_memory(hash *hash_table[])
 {
-    int i;
-    hash *current, *temp;
-    for (i = 0; i < HASH_SIZE; i++)
+    for (int i = 0; i < HASH_SIZE; i++)
     {
-        current = hash_table[i];
+        hash *current = hash_table[i];
         while (current != NULL)
         {
-            temp = current;
+            hash *temp = current;
             current = current->next;
+            free(temp->macro_name);
+            line_node *current_line = temp->lines;
+            while (current_line != NULL)
+            {
+                line_node *temp_line = current_line;
+                current_line = current_line->next;
+                free(temp_line->line_data);
+                free(temp_line);
+            }
             free(temp);
         }
     }
 }
+
 hash *search_macro_in_hash(char *macro_name, hash *hash_table[])
 {
-    unsigned int index;
-    hash *current;
-    current = hash_table[index];
-    index = hash_function(macro_name);
-
+    unsigned int index = hash_function(macro_name);
+    hash *current = hash_table[index];
     while (current != NULL)
     {
         if (strcmp(current->macro_name, macro_name) == 0)
         {
-            return current; /*macro found*/
+            return current;
         }
         current = current->next;
     }
-    return NULL; /* macro not found*/
+    return NULL;
 }
 
 int line_defenition(char *line, struct sep_line separated)
 {
-    int name_index;
-
-    if (strcmp(separated.line[0], "macr") == 0) /*if the line is a macro defenition*/
+    if (strcmp(separated.line[0], "macr") == 0)
     {
         if (strpbrk(line, ",") != NULL)
         {
-            printf("Error: macro defenition should not contain a comma\n");
+            printf("Error: macro definition should not contain a comma\n");
             return Error;
         }
         if (separated.line_number == 1)
         {
-            printf("Error: macro defenition should contain a name\n");
+            printf("Error: macro definition should contain a name\n");
             return Error;
         }
-        else if (system_names(separated.line[1]) != true) /*checking if the name is a system name*/
+        else if (system_names(separated.line[1]) != true)
         {
             printf("Error: macro name is a system name\n");
             return Error;
         }
         else
         {
-            name_index = hash_function(separated.line[1]); /*calculating the name index */
-            return name_index;
+            return hash_function(separated.line[1]);
         }
     }
-    else if (strcmp(separated.line[0], "endmacr") == 0) /*its the end of the macro defenition*/
+    else if (strcmp(separated.line[0], "endmacr") == 0)
     {
         if (separated.line_number > 1)
         {
-            printf("Error: end of macro defenition should not contain any other words\n");
+            printf("Error: end of macro definition should not contain any other words\n");
             return Error;
         }
         else
@@ -179,7 +201,7 @@ int line_defenition(char *line, struct sep_line separated)
             return endmacro;
         }
     }
-    else /*its not a macro line*/
+    else
     {
         return regular_line;
     }
@@ -192,11 +214,19 @@ void find_macro(char *line, hash *hash_table[], FILE *input)
     int indicator; /*if indicator is macro_defenition its will define the lines as macros till the indicator is regular*/
     int name_index;
     name_index = 0;
+    char *line_copy;
 
     while (fgets(line, MAX_LINE, input))
     {
+        line_copy = malloc(strlen(line) + 1);
+        if (line_copy == NULL)
+        {
+            printf("Memory allocation error\n");
+            exit(EXIT_FAILURE);
+        }
+        strcpy(line_copy, line);
         struct sep_line separated = next_word(line);
-        name_index = line_defenition(line, separated);
+        name_index = line_defenition(line_copy, separated);
 
         if (name_index == Error)
         {
@@ -220,23 +250,24 @@ void find_macro(char *line, hash *hash_table[], FILE *input)
             if (indicator == macro_defenition)
             {
                 /*using the index copy to add the lines in the right index*/
-                insert_to_hash(line, hash_table, index_copy, 0);
+                insert_to_hash(line_copy, hash_table, index_copy, 0);
             }
             else
             {
-                macro_found = search_macro_in_hash(line, hash_table);
+                macro_found = search_macro_in_hash(line_copy, hash_table);
                 /*searching if the macro is in the hash so we will add it to the file*/
                 if (macro_found != NULL)
                 {
                     /*add the hash data to the as file*/
-                    fprintf(input, "%s\n", macro_found->line_data);
+                    fprintf(input, "%s\n", macro_found->lines->line_data); // Note: This assumes the first line is used
                 }
                 /*add the line to the as file*/
                 else
                 {
-                    fprintf(input, "%s\n", line);
+                    fprintf(input, "%s\n", line_copy);
                 }
             }
         }
+        free(line_copy);
     }
 }
