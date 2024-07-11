@@ -58,16 +58,25 @@ char *duplicate_string(const char *source)
  */
 void trim_whitespace(char *str)
 {
-    char *end;
-    while (isspace((unsigned char)*str))
-        str++;
-    if (*str == 0)
-        return;
-    end = str + strlen(str) - 1;
-    while (end > str && isspace((unsigned char)*end))
-        end--;
+    char *src, *dst, *end;
 
-    *(end + 1) = 0;
+    // Skip leading whitespace
+    src = str;
+    while (isspace((unsigned char)*src))
+        src++;
+
+    // Copy non-whitespace characters to start of string
+    dst = str;
+    while (*src != 0)
+        *dst++ = *src++;
+
+    // Null-terminate the string
+    *dst = 0;
+
+    // Remove trailing whitespace
+    end = dst - 1;
+    while (end > str && isspace((unsigned char)*end))
+        *end-- = 0;
 }
 /**
  * Function to split a line into words based on spaces.
@@ -316,8 +325,6 @@ int is_string(char *line)
     return line[0] == '"' && line[strlen(line) - 1] == '"';
 }
 
-
-
 /**
  * Resets a string array to NULL values.
  */
@@ -478,24 +485,22 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
     j = 0;
     for (i = 0; i < sep.line_number; i++)
     {
-        // Check if the current string is an integer
+
         if (is_int(sep.line[i], ast))
         {
-            // Check for missing comma error
+
             if ((i + 1) < sep.line_number && is_int(sep.line[i + 1], ast))
             {
                 error_found(ast, "error-missing comma");
                 return *ast;
             }
 
-            // Remove '#' character if present
             char *num_str = sep.line[i];
             if (num_str[0] == '#')
             {
-                num_str++; // Move past the '#'
+                num_str++;
             }
 
-            // Convert the string to an integer and store it
             if (check_command_or_instruction(ast) == instruction)
             {
                 ast->line_type_data.inst.data_array[j++] = atoi(num_str);
@@ -516,13 +521,11 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
         }
         else if (strcmp(sep.line[i], ",") == 0)
         {
-            // Check for too many commas error
             if ((i + 1) < sep.line_number && strcmp(sep.line[i + 1], ",") == 0)
             {
                 error_found(ast, "error-too many commas");
                 return *ast;
             }
-            // Continue processing if single comma found
             else
                 continue;
         }
@@ -541,7 +544,6 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
         }
     }
 
-    // Set instruction type to 'data'
     ast->line_type_data.inst.inst_type = data;
     return *ast;
 }
@@ -860,7 +862,6 @@ void set_command(struct ast *ast, struct sep_line sep, char *command)
 
 struct ast line_type(struct sep_line sep, struct ast *ast)
 {
-   
 
     if (process_token(sep.line[0], ast) == macro)
     {
