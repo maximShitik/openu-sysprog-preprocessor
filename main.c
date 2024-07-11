@@ -3,9 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "lexer.h"
-#include "pre_prossesor.c"
+#include "lexer.c"/*before copyng to the ubuntu need to be changed to .h*/
+#include "pre_pross.c"/*before copyng to the ubuntu need to be changed to .h*/
+#include "data_structs.c"/*before copyng to the ubuntu need to be changed to .h*/
 
 #define HASH_SIZE 100
+
+
 
 int main(int argc, char *argv[])
 {
@@ -30,10 +34,10 @@ int main(int argc, char *argv[])
         fclose(as_file);
         return EXIT_FAILURE;
     }
-
+    
     hash *hash_table[HASH_SIZE] = {NULL};
     char line[MAX_LINE];
-    find_macro(line, hash_table, as_file);
+    find_macro(line, hash_table, as_file,am_file);
     free_memory(hash_table);
     fclose(as_file);
     fclose(am_file);
