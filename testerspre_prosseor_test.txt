@@ -1,0 +1,22 @@
+macr m_macr 
+ cmp r3, #-6
+ bne END 
+endmacr 
+m_macr 
+ lea STR, r6
+ m_macr
+END: stop 
+macr max
+ cmp r3, #-6
+ bne END 
+endmacr 
+macr rt
+ cmp r3, #-6
+ bne END 
+endmacr 
+macr hello 
+ cmp r3, #-6
+ bne END 
+endmacr 
+rt
+hello
