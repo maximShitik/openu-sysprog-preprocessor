@@ -2,7 +2,7 @@
 #define PRE_PROSS_H
 #include "data_structs.h"
 #include <stdio.h>
-
+#include "lexer.h"
 enum
 {
     min_hash_index = 0,
@@ -12,8 +12,8 @@ enum
     macro_defenition = -4,
 };
 
-int line_defenition(char *line, struct sep_line separated);
-void find_macro(char *line, hash *hash_table[], FILE *input,FILE *output);
+int line_defenition(char *line, struct sep_line separated, char error[MAX_LINE]);
+void find_macro(char *line, hash *hash_table[], FILE *input,FILE *output,char error[MAX_LINE]);
 
 
 
