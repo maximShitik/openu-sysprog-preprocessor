@@ -1,137 +1,86 @@
 
-#ifndef PRE_PROSS_C
-#define PRE_PROSS_C
-#include "lexer.c"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "data_structs.h"
-#include "data_structs.c"
-#include "pre_pross.h"
+#include "lexer.h"
+#include "lexer.c"        /*before copyng to the ubuntu need to be changed to .h*/
+#include "pre_pross.c"    /*before copyng to the ubuntu need to be changed to .h*/
+#include "data_structs.c" /*before copyng to the ubuntu need to be changed to .h*/
 
-int line_defenition(char *line, struct sep_line separated,char error[MAX_LINE])
+#define HASH_SIZE 100
+
+int main(int argc, char *argv[])
 {
-    if (strcmp(separated.line[0], "macr") == 0)
+    int line_number;
+    char parsed_line[MAX_LINE];
+    struct ast result;
+    FILE *am_file;
+    FILE *as_file;
+    FILE *parsed_file;
+    char line[MAX_LINE];
+    hash *hash_table[HASH_SIZE];
+    char the_error[MAX_LINE];
+    strcpy(the_error, "");
+    line_number = 0;
+    if (argc != 2)
     {
-        if (strpbrk(line, ",") != NULL)
-        {
-            strcpy(error, " macro definition should not contain a comma\n");
-            return Error;
-        }
-        if (separated.line_number == 1)
-        {
-
-            strcpy(error, "macro definition should contain a name\n");
-            return Error;
-        }
-        else if (system_names(separated.line[1]) != true)
-        {
-
-            strcpy(error, " macro name is a system name\n");
-            return Error;
-        }
-        else
-        {
-            return hash_function(separated.line[1]);
-        }
+        fprintf(stderr, "Usage: %s <input_file.as>\n", argv[0]);
+        return EXIT_FAILURE;
     }
-    else if (strcmp(separated.line[0], "endmacr") == 0)
+
+    as_file = fopen(argv[1], "r");
+    if (as_file == NULL)
     {
-        if (separated.line_number > 1)
-        {
+        perror("Error opening input file");
+        return EXIT_FAILURE;
+    }
 
-            strcpy(error, "end of macro definition should not contain any other words\n");
+    am_file = fopen("output.am", "w");
+    if (am_file == NULL)
+    {
+        perror("Error creating output.am");
+        fclose(as_file);
+        return EXIT_FAILURE;
+    }
+    hash_reset(hash_table);
+    find_macro(line, hash_table, as_file, am_file, the_error);
+    free_memory(hash_table);
 
-            return Error;
-        }
-        else
-        {
-            return endmacro;
-        }
+    if (strcmp(the_error, "") != 0)
+    {
+        printf("Error in pre-prossesor: %s\n", the_error);
     }
     else
     {
-        return regular_line;
-    }
-}
-
-void find_macro(char *line, hash *hash_table[], FILE *input, FILE *output,char error[MAX_LINE])
-{
-    int index_copy;
-    hash *macro_found;
-    int indicator; /*if indicator is macro_defenition its will define the lines as macros till the indicator is regular*/
-    int name_index;
-    name_index = 0;
-    char *line_copy;
-    index_copy = 0;
+        fclose(as_file);
+        fclose(am_file);
+    
     
 
-    while (fgets(line, MAX_LINE, input))
+    parsed_file = fopen("output.am", "r");
+    if (parsed_file == NULL)
     {
+        perror("Error opening output.am for parsing");
+        return EXIT_FAILURE;
+    }
 
-        trim_whitespace(line);
-        line_copy = malloc(strlen(line) + 1);
-        if (line_copy == NULL)
-        {
-            strcpy(error, "Memory allocation error");
-            exit(EXIT_FAILURE);
-        }
-        if (line[0] == '\0' || line[0] == ';')
+    while (fgets(parsed_line, sizeof(parsed_line), parsed_file))
+    {
+        line_number++;
+
+        parsed_line[strcspn(parsed_line, "\r\n")] = '\0';
+
+        if (parsed_line[0] == '\0' || parsed_line[0] == ';')
             continue;
-        strcpy(line_copy, line);
+        result = parse_line(parsed_line);
 
-        struct sep_line separated = next_word(line);
-        name_index = line_defenition(line_copy, separated, error);
-
-        if (name_index == Error)
+        if (result.line_type == error_line)
         {
-            fclose(input);
-            remove("output.am");
-            free(line_copy);
-            return;
-        }
-        else if (name_index >= min_hash_index)
-        {
-            insert_to_hash(separated.line[1], hash_table, name_index, 1);
-            indicator = macro_defenition;
-            index_copy = name_index; /*saving the index so we will insert the lines in the right macro*/
-        }
-        else if (name_index == endmacro)
-        {
-            /*stop adding lines to the hash*/
-            indicator = regular_line;
-        }
-        else if (name_index == regular_line)
-        {
-            if (indicator == macro_defenition)
-            {
-                /*using the index copy to add the lines in the right index*/
-                insert_to_hash(line_copy, hash_table, index_copy, 0);
-            }
-            else
-            {
-                macro_found = search_macro_in_hash(line_copy, hash_table);
-                /*searching if the macro is in the hash so we will add it to the file*/
-                if (macro_found != NULL)
-                {
-                    /*add the hash data to the as file*/
-                    line_node *current_line = macro_found->lines;
-                    while (current_line != NULL)
-                    {
-                        fprintf(output, "%s\n", current_line->line_data);
-                        current_line = current_line->next;
-                    }
-                    fflush(output);
-                }
-                /*add the line to the as file*/
-                else
-                {
-                    fprintf(output, "%s\n", line_copy);
-                    fflush(output);
-                }
-            }
+            printf("Error in line number: %d\n Error: %s\n", line_number, result.error.type);
         }
     }
-    free(line_copy);
+
+    fclose(parsed_file);
+    }
+    return EXIT_SUCCESS;
 }
-#endif
