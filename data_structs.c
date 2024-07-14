@@ -146,9 +146,9 @@ void free_memory(hash *hash_table[])
  * @param hash_table 
  * @return hash* 
  */
-hash *search_macro_in_hash(char *macro_name, hash *hash_table[],int index)
+hash *search_macro_in_hash(char *macro_name, hash *hash_table[])
 {
-   
+   int index = hash_function(macro_name);
     hash *current;
     current = hash_table[index];
     while (current != NULL)
