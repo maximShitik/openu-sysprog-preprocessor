@@ -9,23 +9,25 @@
 #include "data_structs.c"
 #include "pre_pross.h"
 
-int line_defenition(char *line, struct sep_line separated)
+int line_defenition(char *line, struct sep_line separated,char error[MAX_LINE])
 {
     if (strcmp(separated.line[0], "macr") == 0)
     {
         if (strpbrk(line, ",") != NULL)
         {
-            printf("Error: macro definition should not contain a comma\n");
+            strcpy(error, " macro definition should not contain a comma\n");
             return Error;
         }
         if (separated.line_number == 1)
         {
-            printf("Error: macro definition should contain a name\n");
+
+            strcpy(error, "macro definition should contain a name\n");
             return Error;
         }
         else if (system_names(separated.line[1]) != true)
         {
-            printf("Error: macro name is a system name\n");
+
+            strcpy(error, " macro name is a system name\n");
             return Error;
         }
         else
@@ -37,7 +39,9 @@ int line_defenition(char *line, struct sep_line separated)
     {
         if (separated.line_number > 1)
         {
-            printf("Error: end of macro definition should not contain any other words\n");
+
+            strcpy(error, "end of macro definition should not contain any other words\n");
+
             return Error;
         }
         else
@@ -51,7 +55,7 @@ int line_defenition(char *line, struct sep_line separated)
     }
 }
 
-void find_macro(char *line, hash *hash_table[], FILE *input, FILE *output)
+void find_macro(char *line, hash *hash_table[], FILE *input, FILE *output,char error[MAX_LINE])
 {
     int index_copy;
     hash *macro_found;
@@ -59,24 +63,25 @@ void find_macro(char *line, hash *hash_table[], FILE *input, FILE *output)
     int name_index;
     name_index = 0;
     char *line_copy;
-    hash_reset(hash_table);
-    index_copy=0;
-   
+    index_copy = 0;
+    
 
     while (fgets(line, MAX_LINE, input))
     {
+
         trim_whitespace(line);
         line_copy = malloc(strlen(line) + 1);
         if (line_copy == NULL)
         {
-            printf("Memory allocation error\n");
+            strcpy(error, "Memory allocation error");
             exit(EXIT_FAILURE);
         }
-        
+        if (line[0] == '\0' || line[0] == ';')
+            continue;
         strcpy(line_copy, line);
-        
+
         struct sep_line separated = next_word(line);
-        name_index = line_defenition(line_copy, separated);
+        name_index = line_defenition(line_copy, separated, error);
 
         if (name_index == Error)
         {
@@ -105,7 +110,7 @@ void find_macro(char *line, hash *hash_table[], FILE *input, FILE *output)
             }
             else
             {
-                macro_found = search_macro_in_hash(line_copy, hash_table, index_copy);
+                macro_found = search_macro_in_hash(line_copy, hash_table);
                 /*searching if the macro is in the hash so we will add it to the file*/
                 if (macro_found != NULL)
                 {
