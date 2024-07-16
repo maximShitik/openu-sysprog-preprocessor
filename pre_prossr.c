@@ -1,13 +1,14 @@
 
 #ifndef PRE_PROSS_C
 #define PRE_PROSS_C
-#include "lexer.c"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "data_structs.h"
 #include "data_structs.c"
 #include "pre_pross.h"
+#include "help_func.h"
+
 
 int line_defenition(char *line, struct sep_line separated,char error[MAX_LINE])
 {
@@ -24,7 +25,7 @@ int line_defenition(char *line, struct sep_line separated,char error[MAX_LINE])
             strcpy(error, "macro definition should contain a name\n");
             return Error;
         }
-        else if (system_names(separated.line[1]) != true)
+        else if (system_names(separated.line[1]) != TRUE)
         {
 
             strcpy(error, " macro name is a system name\n");
