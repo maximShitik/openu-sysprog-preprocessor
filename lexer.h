@@ -1,6 +1,29 @@
 #ifndef LEXER_H
 #define LEXER_H
 #define MAX_LINE 80
+#define MAX_LABEL 32
+#define FALSE 0
+#define TRUE 1
+#define SPACES " \t\n , "
+
+struct sep_line
+{
+    char *line[MAX_LINE];
+    int line_number;
+};
+
+typedef enum return_types
+{
+    error = 1,
+    instruction,
+    command,
+    registerr,
+    Entry,
+    Extrn
+
+} return_types;
+
+
 
 
 typedef struct ast
@@ -12,8 +35,8 @@ typedef struct ast
         error_line = 1,
         inst_line,
         command_line,
-        empty_line,
-        macro_line
+        empty_line
+        
 
     } line_type;
 
@@ -85,7 +108,6 @@ typedef struct ast
     struct
     {
         char type[300];
-        char error_token[80];
         int line_number;
     } error;
     struct
@@ -97,14 +119,12 @@ typedef struct ast
             E
         } ARE_type;
     } ARE;
-    struct macro
-    {
-        char name[80];
-        int line_number;
-    } macro;
+    
 
 
 } ast;
 
 struct ast parse_line(char *line);
+
+
 #endif
