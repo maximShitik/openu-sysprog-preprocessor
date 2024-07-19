@@ -6,13 +6,20 @@
 #include "lexer.c"        /*before copyng to the ubuntu need to be changed to .h*/
 #include "pre_pross.c"    /*before copyng to the ubuntu need to be changed to .h*/
 #include "data_structs.c" /*before copyng to the ubuntu need to be changed to .h*/
+#include "first_pass.h"
+#include "first_pass.c"
+
 
 #define HASH_SIZE 100
+
+extern int first_pass(char *file_name, FILE *am_file, struct translation_unit *program);
+
 
 int main(int argc, char *argv[])
 {
     int line_number;
     char parsed_line[MAX_LINE];
+    struct translation_unit program;
     struct ast result;
     FILE *am_file;
     FILE *as_file;
@@ -63,7 +70,8 @@ int main(int argc, char *argv[])
         perror("Error opening output.am for parsing");
         return EXIT_FAILURE;
     }
-
+    
+    first_pass( "am_file",parsed_file, &program);
     while (fgets(parsed_line, sizeof(parsed_line), parsed_file))
     {
         line_number++;
