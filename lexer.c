@@ -22,10 +22,10 @@ The file prosses the line and checks :
 
 /**
  * @brief cheking to witch group of operand the command belongs
- * 
- * @param ast 
- * @param command 
- * @return int 
+ *
+ * @param ast
+ * @param command
+ * @return int
  */
 int operand_group(struct ast *ast, char *command)
 {
@@ -48,15 +48,14 @@ int operand_group(struct ast *ast, char *command)
     return -1;
 }
 
-
 /**
- * @brief 
- * 
- * @param ast 
- * @param sep 
- * @param command 
- * @param group 
- * @return struct ast 
+ * @brief
+ *
+ * @param ast
+ * @param sep
+ * @param command
+ * @param group
+ * @return struct ast
  */
 struct ast two_group_command(struct ast *ast, struct sep_line sep,
                              char *command, int group)
@@ -159,9 +158,16 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep,
     return *ast;
 }
 
+/**
+ * @brief operating the one group command
+ *
+ * @param ast
+ * @param sep
+ * @param command
+ * @return struct ast
+ */
 struct ast one_group_command(struct ast *ast, struct sep_line sep,
                              char *command)
-
 {
     int i;
     int current;
@@ -245,13 +251,12 @@ void no_operands_command(struct ast *ast, struct sep_line sep, char *command)
     return;
 }
 
-
 /**
  * @brief Set the command object
- * 
- * @param ast 
- * @param sep 
- * @param command 
+ *
+ * @param ast
+ * @param sep
+ * @param command
  */
 void set_command(struct ast *ast, struct sep_line sep, char *command)
 {
@@ -271,13 +276,12 @@ void set_command(struct ast *ast, struct sep_line sep, char *command)
     }
 }
 
-
 /**
  * @brief Check the line type by the inserted line
- * 
- * @param sep 
- * @param ast 
- * @return struct ast 
+ *
+ * @param sep
+ * @param ast
+ * @return struct ast
  */
 struct ast line_type(struct sep_line sep, struct ast *ast)
 {
@@ -322,18 +326,23 @@ struct ast line_type(struct sep_line sep, struct ast *ast)
 }
 
 /**
- * Parses a line and generates an AST node.
+ * @brief parese the line and return the AST node
+ *
+ * @param line
+ * @return struct ast
  */
 struct ast parse_line(char *line)
 {
-    struct sep_line separated = next_word(line);
     struct ast ast;
-    reset_ast(&ast);
-    if (separated.line_number == 0)
+    struct sep_line separated = next_word(line);
+    /*checking if we dont have enough operands*/
+    if (separated.line_number == 1 && (strcmp(separated.line[0], "stop") != 0 || strcmp(separated.line[0], "rts") != 0))
     {
-        ast.line_type = empty_line;
+        error_found(&ast, "missing operand");
         return ast;
     }
+
+    reset_ast(&ast);
     line_type(separated, &ast);
     return ast;
 }
