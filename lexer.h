@@ -19,12 +19,9 @@ typedef enum return_types
     command,
     registerr,
     Entry,
-    Extrn
+    Extrn,
 
 } return_types;
-
-
-
 
 typedef struct ast
 {
@@ -36,7 +33,6 @@ typedef struct ast
         inst_line,
         command_line,
         empty_line
-        
 
     } line_type;
 
@@ -57,6 +53,7 @@ typedef struct ast
             char *label_array[2]; /*entry/extern*/
             int data_array[80];
             char *string_array[50];
+            int data_counter;
 
         } inst;
 
@@ -103,12 +100,11 @@ typedef struct ast
 
         } command;
 
-        
     } line_type_data;
     struct
     {
         char type[300];
-        int line_number;
+
     } error;
     struct
     {
@@ -119,12 +115,13 @@ typedef struct ast
             E
         } ARE_type;
     } ARE;
-    
 
+    char label_name[MAX_LABEL];
 
 } ast;
 
 struct ast parse_line(char *line);
-
+struct ast one_group_command(struct ast *ast, struct sep_line sep, char *command);
+int operand_group(struct ast *ast, char *command);
 
 #endif
