@@ -1,10 +1,10 @@
 #ifndef DATA_STRUCTS_C
 #define DATA_STRUCTS_C
 #include "data_structs.h"
+#include "first_pass.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 
 /**
  * @brief Reseting the hash table and setting all the pointers to NULL
@@ -26,25 +26,25 @@ void hash_reset(hash *hash_table[])
  * @param str
  * @return unsigned int
  */
-unsigned int hash_function(char *macro_name)
+unsigned int hash_function(char *name)
 {
     unsigned int hash = 0;
-    while (*macro_name)
+    while (*name)
     {
-        hash = (hash << 3) + *macro_name++;
+        hash = (hash << 3) + *name++;
     }
     return hash % HASH_SIZE;
 }
 
 /**
  * @brief inserting data to the has table
- * 
- * @param data 
+ *
+ * @param data
  * @param hash_table
- * @param index 
- * @param is_macro_name 
+ * @param index
+ * @param is_macro_name
  */
-void insert_to_hash(char *data, hash *hash_table[], int index, int is_macro_name)
+void insert_to_hash(char *data, hash *hash_table[], int index, int name)
 {
     hash *new_hash = (hash *)malloc(sizeof(hash));
     if (new_hash == NULL)
@@ -53,16 +53,16 @@ void insert_to_hash(char *data, hash *hash_table[], int index, int is_macro_name
         exit(EXIT_FAILURE);
     }
 
-    if (is_macro_name)
+    if (name)
     {
-        new_hash->macro_name = malloc(strlen(data) + 1);
-        if (new_hash->macro_name == NULL)
+        new_hash->name = malloc(strlen(data) + 1);
+        if (new_hash->name == NULL)
         {
             printf("Memory allocation error\n");
             exit(EXIT_FAILURE);
         }
-        strcpy(new_hash->macro_name, data);
-        new_hash->lines = NULL;
+        strcpy(new_hash->name, data);
+        new_hash->data = NULL;
     }
     else
     {
@@ -87,13 +87,13 @@ void insert_to_hash(char *data, hash *hash_table[], int index, int is_macro_name
             current = current->next;
         }
 
-        if (current->lines == NULL)
+        if (current->data == NULL)
         {
-            current->lines = new_line;
+            current->data = new_line;
         }
         else
         {
-            line_node *current_line = current->lines;
+            line_node *current_line = current->data;
             while (current_line->next != NULL)
             {
                 current_line = current_line->next;
@@ -109,11 +109,10 @@ void insert_to_hash(char *data, hash *hash_table[], int index, int is_macro_name
     hash_table[index] = new_hash;
 }
 
-
 /**
  * @brief freeting the memory allocated for the hash table
- * 
- * @param hash_table 
+ *
+ * @param hash_table
  */
 void free_memory(hash *hash_table[])
 {
@@ -124,8 +123,8 @@ void free_memory(hash *hash_table[])
         {
             hash *temp = current;
             current = current->next;
-            free(temp->macro_name);
-            line_node *current_line = temp->lines;
+            free(temp->name);
+            line_node *current_line = temp->data;
             while (current_line != NULL)
             {
                 line_node *temp_line = current_line;
@@ -138,22 +137,21 @@ void free_memory(hash *hash_table[])
     }
 }
 
-
 /**
- * @brief 
- * 
- * @param macro_name 
- * @param hash_table 
- * @return hash* 
+ * @brief
+ *
+ * @param macro_name
+ * @param hash_table
+ * @return hash*
  */
-hash *search_macro_in_hash(char *macro_name, hash *hash_table[])
+hash *search_in_hash(char *macro_name, hash *hash_table[])
 {
-   int index = hash_function(macro_name);
+    int index = hash_function(macro_name);
     hash *current;
     current = hash_table[index];
     while (current != NULL)
     {
-        if (strcmp(current->macro_name, macro_name)==0)
+        if (strcmp(current->name, macro_name) == 0)
         {
             return current;
         }
@@ -161,7 +159,6 @@ hash *search_macro_in_hash(char *macro_name, hash *hash_table[])
     }
     return NULL;
 }
-
 
 
 
