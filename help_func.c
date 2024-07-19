@@ -32,6 +32,20 @@ void trim_whitespace(char *str)
         *end-- = 0;
 }
 
+
+void remove_backslashes(char *str)
+{
+    char *src, *dst;
+    src = dst = str;
+    while (*src != 0)
+    {
+        if (*src != '\\')
+            *dst++ = *src;
+        src++;
+    }
+    *dst = 0;
+}
+
 /**
  * Function to split a line into words based on spaces.
  * Removes leading spaces and stops at the first null character.
@@ -51,28 +65,31 @@ struct sep_line next_word(char *line)
 
     do
     {
-        sep = strpbrk(token, SPACES ",");
+        if (*token == '"') {
+            sep = strchr(token + 1, '"');
+            if (sep != NULL) {
+                sep++; // include the closing quote
+            }
+        } else {
+            sep = strpbrk(token, SPACES ",");
+        }
 
         if (sep != NULL)
         {
-            if (*sep == ',')
-            {
-                *sep = '\0';
-                trim_whitespace(token);
-                if (*token != '\0')
-                {
-                    separated.line[counter++] = token;
-                }
+            char temp = *sep;
+            *sep = '\0';
+            if (temp == ',') {
+                separated.line[counter++] = token;
                 separated.line[counter++] = ",";
                 token = sep + 1;
-            }
-            else
-            {
-                *sep = '\0';
-                trim_whitespace(token);
-                if (*token != '\0')
-                {
+            } else {
+                if (*token == '"') {
                     separated.line[counter++] = token;
+                } else {
+                    trim_whitespace(token);
+                    if (*token != '\0') {
+                        separated.line[counter++] = token;
+                    }
                 }
                 token = sep + 1;
             }
@@ -82,10 +99,13 @@ struct sep_line next_word(char *line)
         }
         else
         {
-            trim_whitespace(token);
-            if (*token != '\0')
-            {
+            if (*token == '"') {
                 separated.line[counter++] = token;
+            } else {
+                trim_whitespace(token);
+                if (*token != '\0') {
+                    separated.line[counter++] = token;
+                }
             }
         }
     } while (sep != NULL && *token != '\0');
