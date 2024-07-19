@@ -1,350 +1,167 @@
-/*
-This file is taking a line from the input file and parsing it to an AST node.
-The AST node is then returned.
-The file prosses the line and checks :
-1) What is the line type (instruction, command, label, error line)
-2) If the line is a label, it sets the label name and the next line type (instruction or command).
-3) If the line is a command, it sets the command name and the operands by checking the command group by number of operands.
-4) If the line is an instruction, it sets the instruction name and the operands.
-5) If the line is an error line, it sets the error message and returns an eampty AST node with the error messege only.
-*/
+#ifndef FIRST_PASS_C
+#define FIRST_PASS_C
 
-#ifndef LEXER_C
-#define LEXER_C
-#include "lexer.h"
+#include "first_pass.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include "help_func.h"
-#include "help_func.c"
-#include "lexer_func.h"
-#include "lexer_func.c"
+#include "lexer.h"
 
-/**
- * @brief cheking to witch group of operand the command belongs
- *
- * @param ast
- * @param command
- * @return int
- */
-int operand_group(struct ast *ast, char *command)
-{
-    if (strcmp(command, "mov") == 0 || strcmp(command, "cmp") == 0 ||
-        strcmp(command, "add") == 0 || strcmp(command, "sub") == 0 ||
-        strcmp(command, "lea") == 0)
-    {
-        return 2;
-    }
-    if (strcmp(command, "clr") == 0 || strcmp(command, "not") == 0 ||
-        strcmp(command, "inc") == 0 || strcmp(command, "dec") == 0 ||
-        strcmp(command, "jmp") == 0 || strcmp(command, "bne") == 0 ||
-        strcmp(command, "red") == 0 || strcmp(command, "prn") == 0 ||
-        strcmp(command, "jsr") == 0)
-        return 1;
-    if (strcmp(command, "rts") == 0 || strcmp(command, "stop") == 0)
-        return 0;
-    else
-        error_found(ast, "error-undefinded command");
-    return -1;
-}
-
-/**
- * @brief
- *
- * @param ast
- * @param sep
- * @param command
- * @param group
- * @return struct ast
- */
-struct ast two_group_command(struct ast *ast, struct sep_line sep,
-                             char *command, int group)
-{
-
-    int current;
-    current = 0;
-
-    if (strcmp(sep.line[1], ",") == 0)
-    {
-        error_found(ast, "error-extra comma");
-        return *ast;
-    }
-
-    while (strcmp(sep.line[current], command) != 0)
-    {
-        current++;
-    }
-    if (sep.line[++current] == NULL)
-    {
-        error_found(ast, "error-missing operand");
-        return *ast;
-    }
-
-    if (strcmp(command, "lea") == 0)
-        if (system_names(sep.line[current]) != TRUE || is_int(sep.line[current], ast))
-        {
-            error_found(ast, "error-invalid operand");
-            return *ast;
-        }
-    if (system_names(sep.line[current]) == TRUE)
-        set_label(ast, sep, current);
-    if (is_int(sep.line[current], ast))
-    {
-        set_data(ast, sep);
-    }
-    if (system_names(sep.line[current]) == registerr)
-    {
-        ast->line_type_data.command.opcode_type[0].command_type = reg;
-        if (strpbrk(sep.line[current], "*") == NULL)
-        {
-            ast->line_type_data.command.opcode_type[0].regg =
-                atoi(sep.line[current] + 1);
-        }
-        else
-            ast->line_type_data.command.opcode_type[0].regg =
-                atoi(sep.line[current] + 2);
-    }
-
-    if (sep.line[++current] == NULL)
-    {
-        error_found(ast, "error-missing operand");
-        return *ast;
-    }
-    if (strcmp(sep.line[current], ",") != 0)
-    {
-        error_found(ast, "error-missing comma");
-        return *ast;
-    }
-    current++;
-    if (sep.line[current] == NULL)
-    {
-        error_found(ast, "error-missing operand");
-        return *ast;
-    }
-
-    if (sep.line[++current] != NULL)
-    {
-        error_found(ast, "error-too many operands");
-        return *ast;
-    }
-    current--;
-
-    if (is_int(sep.line[current], ast))
-    {
-        set_data(ast, sep);
-        if (strcmp(command, "cmp") != 0)
-        {
-            error_found(ast, "error-invalid operand,command cant receive numbers");
-            return *ast;
-        }
-    }
-    if (system_names(sep.line[current]) == registerr)
-    {
-        ast->line_type_data.command.opcode_type[1].command_type = reg;
-        if (strpbrk(sep.line[current], "*") == NULL)
-        {
-            ast->line_type_data.command.opcode_type[1].regg =
-                atoi(sep.line[current] + 1);
-        }
-        else
-            ast->line_type_data.command.opcode_type[1].regg =
-                atoi(sep.line[current] + 2);
-    }
-    else if (system_names(sep.line[current]) == TRUE && !is_int(sep.line[current], ast))
-    {
-        set_label(ast, sep, current);
-    }
-    set_command_name(ast, command);
-    return *ast;
-}
-
-/**
- * @brief operating the one group command
- *
- * @param ast
- * @param sep
- * @param command
- * @return struct ast
- */
-struct ast one_group_command(struct ast *ast, struct sep_line sep,
-                             char *command)
+struct symbol *symbol_search(struct symbol *sym_table, int size, char *name)
 {
     int i;
-    int current;
-    current = 0;
+    for (i = 0; i < size; i++)
+    {
+        if (strcmp(sym_table->symbol_name, name) == 0)
+        {
+            return &sym_table[i];
+        }
+    }
+    return NULL;
+}
 
+int first_pass(char *file_name, FILE *am_file, struct translation_unit *program)
+{
+    struct ast line_ast = {0};
+    int i;
+    int is_error;
+    char line[MAX_LINE];
+    int line_number;
+    char command[MAX_LINE];
+    struct symbol *symbol_found;
+    size_t len;
+    line_number = 1;
+    int ic, dc;
+    ic = 100, dc = 0;
+    is_error = 0;
     i = 0;
 
-    while (strcmp(sep.line[current], command) != 0)
+    while (fgets(line, sizeof(line), am_file))
     {
-        current++;
-    }
-    current++;
-    if (system_names(sep.line[current]) == TRUE && !is_int(sep.line[current], ast))
-    {
-        set_label(ast, sep, current);
-    }
-    if (system_names(sep.line[current]) == registerr)
-    {
-        if (strpbrk(sep.line[current], "*") &&
-            (strcmp(command, "jmp") == 0 || strcmp(command, "bne") == 0))
-        {
-            error_found(ast, "error-invalid operand,register must be indirect");
-            return *ast;
+        if (line[0] == ';' || line[0] == '\n' || line[0] == '\r')
+        { /*skipping the eampty lines and note lines*/
+            continue;
         }
-        else
+        line_ast = parse_line(line); /*parsing the line to an AST*/
+        if (line_ast.line_type == error_line)
         {
-            ast->line_type_data.command.opcode_type[i].command_type = reg;
-            if (strpbrk(sep.line[current], "*") == NULL)
-            {
-                ast->line_type_data.command.opcode_type[i++].regg =
-                    atoi(sep.line[current] + 1);
-            }
-            else
-                ast->line_type_data.command.opcode_type[i].regg =
-                    atoi(sep.line[current] + 2);
+            printf("Syntex error in line %d: %s\n", line_number, line_ast.error.type);
+            is_error = 1; /*indicating there is an error in the syntex*/
+            line_number++;
+            continue;
         }
-    }
-    if (strcmp(command, "jmp") != 0 || strcmp(command, "bne") != 0)
-    {
-        if (is_int(sep.line[current], ast))
+
+        /*prosessing the label and checking if we have redefenition*/
+        if ((line_ast.label_name[0] != '\0') && (line_ast.line_type == inst_line || line_ast.line_type == command_line))
         {
-            if (strcmp(command, "prn") == 0)
+            /*cheking if the name is in the label table*/
+            symbol_found = symbol_search(program->symbol_table, program->symbol_count, line_ast.label_name);
+            if (symbol_found)
             {
-                set_data(ast, sep);
+                if (symbol_found->symbol_type == entry_type)
+                {
+                    program->symbol_table[program->symbol_count].symbol_type = line_ast.line_type == command_line ? code_type : data_type;
+                    program->symbol_table[program->symbol_count].address = line_ast.line_type == command_line ? ic : dc;
+                }
+                else /*if the name*/
+                {
+
+                    printf("Error in line %d: %s\n", line_number, "label already defined");
+                    is_error = 1;
+                }
             }
             else
             {
-                error_found(ast, "error-invalid operand,only prn can receive numbers");
-                return *ast;
+                len = strlen(line_ast.label_name); /*removing the : from the lable name*/
+                strncpy(program->symbol_table[program->symbol_count].symbol_name, line_ast.label_name, len - 1);
+                program->symbol_table[program->symbol_count].address = line_ast.line_type == command_line ? ic : dc;
+                program->symbol_table[program->symbol_count].symbol_type = line_ast.line_type == command_line ? code_type : data_type;
+                program->symbol_count++;
             }
         }
 
-        if (sep.line[current + 1] != NULL)
+        if (line_ast.line_type == command_line)
         {
-            error_found(ast, "error-too many operands");
-            return *ast;
+            ic++;
+            if (line_ast.line_type_data.command.opcode_type[0].command_type == reg && line_ast.line_type_data.command.opcode_type[1].command_type == reg)
+                ic++;
+            else
+            {
+                ic = ic + 2;
+            }
         }
-        if (strcmp(command, "not") == 0)
-            ast->line_type_data.command.opcode = nt;
-        else
-            set_command_name(ast, command);
-        return *ast;
-    }
-    else
-        error_found(ast, "error-invalid operand");
-    return *ast;
-}
-void no_operands_command(struct ast *ast, struct sep_line sep, char *command)
-{
-    int current;
-    while (strcmp(sep.line[current], command) != 0)
-    {
-        current++;
-    }
-    if (sep.line[current + 1] != NULL)
-    {
-        error_found(ast, "error-too many operands");
-        return;
-    }
-    set_command_name(ast, command);
-    return;
-}
 
-/**
- * @brief Set the command object
- *
- * @param ast
- * @param sep
- * @param command
- */
-void set_command(struct ast *ast, struct sep_line sep, char *command)
-{
-    int result;
-    result = operand_group(ast, command);
-    if (result == 2)
-    {
-        two_group_command(ast, sep, command, result);
-    }
-    else if (result == 1)
-    {
-        one_group_command(ast, sep, command);
-    }
-    else if (result == 0)
-    {
-        no_operands_command(ast, sep, command);
-    }
-}
-
-/**
- * @brief Check the line type by the inserted line
- *
- * @param sep
- * @param ast
- * @return struct ast
- */
-struct ast line_type(struct sep_line sep, struct ast *ast)
-{
-
-    if (process_token(sep.line[0], ast) == instruction)
-    {
-        ast->line_type = inst_line;
-        set_instruction(ast, sep);
-        return *ast;
-    }
-    if (process_token(sep.line[0], ast) == lable)
-    {
-
-        if (process_token(sep.line[1], ast) == instruction)
+        else if (line_ast.line_type == inst_line)
         {
-            ast->line_type = inst_line;
-            set_label(ast, sep, 0);
-            set_instruction(ast, sep);
-            return *ast;
+
+            if (line_ast.line_type_data.inst.inst_type == data)
+            {
+                program->DC = dc;
+
+                memcpy(&program->data_array[program->DC], &line_ast.line_type_data.inst.data_array, sizeof(int) * line_ast.line_type_data.inst.data_counter);
+
+                dc += line_ast.line_type_data.inst.data_counter;
+                program->DC = dc;
+            }
+            else if (line_ast.line_type_data.inst.inst_type == string)
+            {
+                program->DC = dc;
+
+                memcpy(&program->data_array[program->DC], line_ast.line_type_data.inst.string_array, sizeof(int) * line_ast.line_type_data.inst.data_counter);
+
+                dc += line_ast.line_type_data.inst.data_counter;
+                program->DC = dc;
+            }
+
+            if (line_ast.line_type_data.inst.inst_type == entry || line_ast.line_type_data.inst.inst_type == extrn)
+            {
+                symbol_found = symbol_search(program->symbol_table, program->symbol_count, line_ast.line_type_data.inst.label_array[1]);
+                if (symbol_found && symbol_found->symbol_type == entry_type)
+                {
+                    if (symbol_found->symbol_type == code_type)
+                    {
+                        symbol_found->symbol_type = entry_code_type;
+                    }
+                    else if (symbol_found->symbol_type == data_type)
+                    {
+                        symbol_found->symbol_type = entry_data_type;
+                    }
+
+                    else if (!symbol_found)
+                    {
+                        strcpy(program->symbol_table[program->symbol_count].symbol_name, line_ast.line_type_data.inst.label_array[0]);
+                        program->symbol_table[program->symbol_count].symbol_type = line_ast.line_type_data.inst.inst_type == entry ? entry_type : extrn_type;
+                        program->symbol_count++;
+                    }
+
+                    else
+                    {
+                        printf("Error in line %d: %s\n", line_number, "label already defined");
+                        is_error = 1;
+                    }
+                }
+            }
         }
-        else if (process_token(sep.line[1], ast) == command)
-        {
-            ast->line_type = command_line;
-            set_label(ast, sep, 0);
-            set_command(ast, sep, sep.line[1]);
+        line_number++;
+    }
 
-            return *ast;
+    for (i = 0; i < program->symbol_count; i++)
+    {
+        if (program->symbol_table[i].symbol_type == entry_type)
+        {
+            printf("Error in line %d: %s\n", line_number, "label already defined");
+            is_error = 1;
+        }
+        if (program->symbol_table[i].symbol_type == data_type || program->symbol_table[i].symbol_type == entry_data_type)
+        {
+            program->symbol_table[i].address += ic;
+        }
+        if (program->symbol_table[i].symbol_type == entry_code_type)
+        {
+            program->enrty[program->enrty_count] = &program->symbol_table[i];
+            program->enrty_count++;
         }
     }
-    else if (process_token(sep.line[0], ast) == command)
-    {
-        ast->line_type = command_line;
-        set_command(ast, sep, sep.line[0]);
-        return *ast;
-    }
-    else if (ast->line_type != error_line)
-    {
-        error_found(ast, "error-undefinded line type");
-        return *ast;
-    }
-    return *ast;
-}
-
-/**
- * @brief parese the line and return the AST node
- *
- * @param line
- * @return struct ast
- */
-struct ast parse_line(char *line)
-{
-    struct ast ast;
-    struct sep_line separated = next_word(line);
-    /*checking if we dont have enough operands*/
-    if (separated.line_number == 1 && (strcmp(separated.line[0], "stop") != 0 || strcmp(separated.line[0], "rts") != 0))
-    {
-        error_found(&ast, "missing operand");
-        return ast;
-    }
-
-    reset_ast(&ast);
-    line_type(separated, &ast);
-    return ast;
+    return is_error;
 }
 
 #endif
