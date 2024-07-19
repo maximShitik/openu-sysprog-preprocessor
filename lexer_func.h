@@ -2,7 +2,7 @@
 #define LEXER_FUNC_H
 #include "lexer.h"
 #include "help_func.h"
-
+#define SPACES " \t\n , "
 void error_found(struct ast *ast, char *error_message);
 struct ast set_label(struct ast *ast, struct sep_line sep, int index);
 struct ast set_lea(struct ast *ast, struct sep_line sep);
@@ -12,7 +12,6 @@ int is_string(char *line, struct ast *ast);
 void reset_ast(struct ast *node);
 void error_found(struct ast *ast, char *error_message);
 struct ast set_entry_extern(struct ast *ast, struct sep_line sep);
-struct ast set_label(struct ast *ast, struct sep_line sep, int index);
 int check_command_or_instruction(struct ast *ast);
 struct ast set_data(struct ast *ast, struct sep_line sep);
 void set_instruction(struct ast *ast, struct sep_line sep);
