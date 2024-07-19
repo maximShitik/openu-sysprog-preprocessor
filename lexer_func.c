@@ -6,7 +6,6 @@ There are 2 types of functions here :
 2)the functions that are used to set the data in the AST.
 */
 
-
 #ifndef LEXER_FUNC_C
 #define LEXER_FUNC_C
 #include "lexer_func.h"
@@ -15,17 +14,15 @@ There are 2 types of functions here :
 #include <stdlib.h>
 #include <string.h>
 
-
-
-
 /**
- * @brief
+ * @brief Prosses the line from the file and checks if the token is valid.
  *
  * @param line
  * @param ast
  * @return int false if the token is invalid,
 
  */
+
 int process_token(char *line, struct ast *ast)
 {
     int result;
@@ -103,10 +100,8 @@ void error_found(struct ast *ast, char *error_message)
 {
     reset_ast(ast);
     ast->line_type = error_line;
-    ast->error.line_number = 1;
     strcpy(ast->error.type, error_message);
 }
-
 
 /**
  * Resets an AST (Abstract Syntax Tree) node to its default state.
@@ -132,15 +127,16 @@ void reset_ast(struct ast *node)
     }
 
     memset(node->error.type, 0, sizeof(node->error.type));
-    node->error.line_number = 0;
+    memset(node->label_name, 0, sizeof(node->label_name));
+    node->line_type_data.inst.data_counter = 0;
     node->ARE.ARE_type = A;
 }
 
 /**
  * @brief Checks if the line is a command or an instruction.
- * 
- * @param ast 
- * @return int 
+ *
+ * @param ast
+ * @return int
  */
 int check_command_or_instruction(struct ast *ast)
 {
@@ -154,7 +150,6 @@ int check_command_or_instruction(struct ast *ast)
     }
     return -1;
 }
-
 
 /**
  * Checks if a string can be converted to an integer.
@@ -179,34 +174,38 @@ int is_int(char *line, struct ast *ast)
     return *endptr == '\0';
 }
 
-
 /**
  * @brief Checks if a string is a valid string.
- * 
- * @param line 
- * @param ast 
- * @return int 
+ *
+ * @param line
+ * @param ast
+ * @return int
  */
 int is_string(char *line, struct ast *ast)
 {
-    if (line[0] == '"' && line[strlen(line) - 1] == '"')
-        return TRUE;
-    else
+    if (line != NULL && strlen(line) > 0 && line[0] == '"')
     {
-        error_found(ast, "error-invalid string");
-        return FALSE;
+        size_t len = strlen(line);
+        if (line[len - 1] == '"')
+        {
+            return TRUE;
+        }
+        else
+        {
+            error_found(ast, "error-invalid string");
+        }
     }
+    return FALSE;
+    
 }
-
-
 
 /**************************************************************SETTERS******************************************/
 /**
  * @brief Set the data object
- * 
- * @param ast 
- * @param sep 
- * @return struct ast 
+ *
+ * @param ast
+ * @param sep
+ * @return struct ast
  */
 struct ast set_data(struct ast *ast, struct sep_line sep)
 {
@@ -234,6 +233,7 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
             if (check_command_or_instruction(ast) == instruction)
             {
                 ast->line_type_data.inst.data_array[j++] = atoi(num_str);
+                ast->line_type_data.inst.data_counter++;
             }
             else if (check_command_or_instruction(ast) == command)
             {
@@ -278,8 +278,6 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
     return *ast;
 }
 
-
-
 struct ast set_string(struct ast *ast, struct sep_line sep)
 {
     int i, j, k;
@@ -287,14 +285,16 @@ struct ast set_string(struct ast *ast, struct sep_line sep)
     char *string_start;
     size_t len;
     j = 0;
-    for (i = 0; i < sep.line_number; i++)
+    i = 0;
+    while (!is_string(sep.line[i], ast)&& i<sep.line_number)
     {
-        if (is_string(sep.line[i], ast))
-        {
-            break;
-        }
+        i++;
     }
-
+    if (sep.line[i] == NULL)
+    {
+        error_found(ast, "invalid string");
+        return *ast;
+    }
     if (i < sep.line_number && is_string(sep.line[i], ast))
     {
 
@@ -319,17 +319,16 @@ struct ast set_string(struct ast *ast, struct sep_line sep)
         free(ast->line_type_data.inst.string_array[j]);
         return *ast;
     }
-
+    ast->line_type_data.inst.data_counter = j;
     ast->line_type_data.inst.inst_type = string;
     return *ast;
 }
 
-
 /**
  * @brief Set the instruction object
- * 
- * @param ast 
- * @param sep 
+ *
+ * @param ast
+ * @param sep
  */
 void set_instruction(struct ast *ast, struct sep_line sep)
 {
@@ -349,15 +348,15 @@ void set_instruction(struct ast *ast, struct sep_line sep)
     {
         set_string(ast, sep);
     }
+    
 }
-
 
 /**
  * @brief Set the entry extern object
- * 
- * @param ast 
- * @param sep 
- * @return struct ast 
+ *
+ * @param ast
+ * @param sep
+ * @return struct ast
  */
 struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
 {
@@ -388,14 +387,13 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
     return *ast;
 }
 
-
 /**
  * @brief Set the label object
- * 
- * @param ast 
- * @param sep 
- * @param index 
- * @return struct ast 
+ *
+ * @param ast
+ * @param sep
+ * @param index
+ * @return struct ast
  */
 struct ast set_label(struct ast *ast, struct sep_line sep, int index)
 {
@@ -405,6 +403,7 @@ struct ast set_label(struct ast *ast, struct sep_line sep, int index)
     if (len > 0 && sep.line[index][len - 1] == ':')
     {
         len--;
+        strcpy(ast->label_name, sep.line[index]);
     }
     if (ast->line_type_data.inst.label_array[0] == NULL)
     {
@@ -440,9 +439,9 @@ struct ast set_label(struct ast *ast, struct sep_line sep, int index)
 
 /**
  * @brief Set the command name object
- * 
- * @param ast 
- * @param command 
+ *
+ * @param ast
+ * @param command
  */
 void set_command_name(struct ast *ast, char *command)
 {
@@ -466,9 +465,5 @@ void set_command_name(struct ast *ast, char *command)
 
     ast->line_type_data.command.opcode = 0;
 }
-
-
-
-
 
 #endif
