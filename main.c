@@ -1,4 +1,5 @@
-
+#ifndef MAIN_C
+#define MAIN_C
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,10 +10,8 @@
 #include "first_pass.h"
 #include "first_pass.c"
 
-
 #define HASH_SIZE 100
 
-extern int first_pass(char *file_name, FILE *am_file, struct translation_unit *program);
 
 
 int main(int argc, char *argv[])
@@ -51,44 +50,32 @@ int main(int argc, char *argv[])
     }
     hash_reset(hash_table);
     find_macro(line, hash_table, as_file, am_file, the_error);
-    free_memory(hash_table);
+    
 
     if (strcmp(the_error, "") != 0)
     {
         printf("Error in pre-prossesor: %s\n", the_error);
+        fclose(am_file);
+        remove("output.am");
+        free_memory(hash_table);
     }
     else
     {
         fclose(as_file);
         fclose(am_file);
-    
-    
 
-    parsed_file = fopen("output.am", "r");
-    if (parsed_file == NULL)
-    {
-        perror("Error opening output.am for parsing");
-        return EXIT_FAILURE;
-    }
-    
-    first_pass( "am_file",parsed_file, &program);
-    while (fgets(parsed_line, sizeof(parsed_line), parsed_file))
-    {
-        line_number++;
-
-        parsed_line[strcspn(parsed_line, "\r\n")] = '\0';
-
-        if (parsed_line[0] == '\0' || parsed_line[0] == ';')
-            continue;
-        result = parse_line(parsed_line);
-
-        if (result.line_type == error_line)
+        parsed_file = fopen("output.am", "r");
+        if (parsed_file == NULL)
         {
-            printf("Error in line number: %d\n Error: %s\n", line_number, result.error.type);
+            perror("Error opening output.am for parsing");
+            return EXIT_FAILURE;
         }
-    }
 
-    fclose(parsed_file);
+        first_pass("am_file", parsed_file, &program, hash_table);
+       
+
+        fclose(parsed_file);
     }
     return EXIT_SUCCESS;
 }
+#endif
