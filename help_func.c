@@ -1,11 +1,11 @@
+#ifndef HELP_FUNC_C
+#define HELP_FUNC_C
 /*
 The functions in this file are used in many other files in the project
 to prevent of using the same code on diffrent missons and be as most generic
 as possible .
 */
 
-#ifndef HELP_FUNC_C
-#define HELP_FUNC_C
 #include "help_func.h"
 #include "lexer.h"
 #include <ctype.h>
@@ -33,18 +33,7 @@ void trim_whitespace(char *str)
 }
 
 
-void remove_backslashes(char *str)
-{
-    char *src, *dst;
-    src = dst = str;
-    while (*src != 0)
-    {
-        if (*src != '\\')
-            *dst++ = *src;
-        src++;
-    }
-    *dst = 0;
-}
+
 
 /**
  * Function to split a line into words based on spaces.
@@ -68,7 +57,7 @@ struct sep_line next_word(char *line)
         if (*token == '"') {
             sep = strchr(token + 1, '"');
             if (sep != NULL) {
-                sep++; // include the closing quote
+                sep++; 
             }
         } else {
             sep = strpbrk(token, SPACES ",");
@@ -79,7 +68,10 @@ struct sep_line next_word(char *line)
             char temp = *sep;
             *sep = '\0';
             if (temp == ',') {
-                separated.line[counter++] = token;
+                trim_whitespace(token);
+                if (*token != '\0') {
+                    separated.line[counter++] = token;
+                }
                 separated.line[counter++] = ",";
                 token = sep + 1;
             } else {
@@ -113,7 +105,6 @@ struct sep_line next_word(char *line)
     separated.line_number = counter;
     return separated;
 }
-
 /**
  * Checks if a string contains any uppercase letters.
  * Returns 1 if it does, 0 otherwise.
