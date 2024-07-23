@@ -41,6 +41,6 @@ struct translation_unit
 };
 
 
-int first_pass(char *file_name, FILE *am_file, struct translation_unit *program);
+int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,struct hash *hash_table[]);
 
 #endif
