@@ -19,7 +19,7 @@ struct symbol *symbol_search(struct symbol *sym_table, int size, char *name)
     return NULL;
 }
 
-int first_pass(char *file_name, FILE *am_file, struct translation_unit *program)
+int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,struct hash *hash_table[])
 {
     struct ast line_ast = {0};
     int i;
@@ -41,7 +41,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program)
         { /*skipping the eampty lines and note lines*/
             continue;
         }
-        line_ast = parse_line(line); /*parsing the line to an AST*/
+        line_ast = parse_line(line,hash_table); /*parsing the line to an AST*/
         if (line_ast.line_type == error_line)
         {
             printf("Syntex error in line %d: %s\n", line_number, line_ast.error.type);
