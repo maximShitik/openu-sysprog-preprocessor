@@ -71,8 +71,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
             }
             else
             {
-                len = strlen(line_ast.label_name); /*removing the : from the lable name*/
-                strncpy(program->symbol_table[program->symbol_count].symbol_name, line_ast.label_name, len - 1);
+                strcpy(program->symbol_table[program->symbol_count].symbol_name, line_ast.label_name);
                 program->symbol_table[program->symbol_count].address = line_ast.line_type == command_line ? ic : dc;
                 program->symbol_table[program->symbol_count].symbol_type = line_ast.line_type == command_line ? code_type : data_type;
                 program->symbol_count++;
