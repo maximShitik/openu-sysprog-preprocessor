@@ -1,4 +1,5 @@
-
+#ifndef LEXER_FUNC_C
+#define LEXER_FUNC_C
 /*
 The functions in this file are used to help the lexer do its job and prosess the line in to an AST.
 There are 2 types of functions here :
@@ -6,8 +7,7 @@ There are 2 types of functions here :
 2)the functions that are used to set the data in the AST.
 */
 
-#ifndef LEXER_FUNC_C
-#define LEXER_FUNC_C
+
 #include "lexer_func.h"
 #include "help_func.h"
 #include "lexer.h"
@@ -403,7 +403,7 @@ struct ast set_label(struct ast *ast, struct sep_line sep, int index)
     if (len > 0 && sep.line[index][len - 1] == ':')
     {
         len--;
-        strcpy(ast->label_name, sep.line[index]);
+        strncpy(ast->label_name, sep.line[index], len);
     }
     if (ast->line_type_data.inst.label_array[0] == NULL)
     {
