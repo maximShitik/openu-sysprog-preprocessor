@@ -375,10 +375,12 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
         error_found(ast, "missing label name");
         return *ast;
     }
+    
     if (sep.line_number > 2 && ast->label_name[0] != '\0')
-    {
-        printf("entry/extern will not use the label name\n");
-        ast->label_name[0] = '\0';
+    {   
+        printf("Warning - entry/extern will not use the label name\n");
+        reset_ast(ast);
+        ast->line_type = inst_line;
         if (strcmp(sep.line[1], ".entry") == 0 || strcmp(sep.line[1], "entry") == 0)
         {
 
@@ -388,7 +390,9 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
         {
             ast->line_type_data.inst.inst_type = extrn, ast->ARE.ARE_type = E;
         }
+        
         set_label(ast, sep, 2);
+        ast->label_name[0] = '\0';/*setting only the first letter to \0 so we will not use the name*/
         return *ast;
     }
 
@@ -417,7 +421,11 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
 struct ast set_label(struct ast *ast, struct sep_line sep, int index)
 {
     size_t len = strlen(sep.line[index]);
-
+    if(system_names(sep.line[index]) != TRUE || is_int(sep.line[index], ast) || is_string(sep.line[index], ast))
+    {
+        error_found(ast, "invalid label name");
+        return *ast;
+    }
     /* Handle case where line ends with ':'*/
     if (len > 0 && sep.line[index][len - 1] == ':')
     {
