@@ -7,10 +7,10 @@ There are 2 types of functions here :
 2)the functions that are used to set the data in the AST.
 */
 
-
 #include "lexer_func.h"
 #include "help_func.h"
 #include "lexer.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -130,6 +130,7 @@ void reset_ast(struct ast *node)
     memset(node->label_name, 0, sizeof(node->label_name));
     node->line_type_data.inst.data_counter = 0;
     node->ARE.ARE_type = A;
+    node->argument_count = 0;
 }
 
 /**
@@ -196,7 +197,6 @@ int is_string(char *line, struct ast *ast)
         }
     }
     return FALSE;
-    
 }
 
 /**************************************************************SETTERS******************************************/
@@ -286,7 +286,7 @@ struct ast set_string(struct ast *ast, struct sep_line sep)
     size_t len;
     j = 0;
     i = 0;
-    while (!is_string(sep.line[i], ast)&& i<sep.line_number)
+    while (!is_string(sep.line[i], ast) && i < sep.line_number)
     {
         i++;
     }
@@ -337,7 +337,12 @@ void set_instruction(struct ast *ast, struct sep_line sep)
     {
         set_entry_extern(ast, sep);
     }
+    else if ((strcmp(sep.line[1], ".entry") == 0 ||
+              strcmp(sep.line[1], ".extern") == 0))
+    {
 
+        set_entry_extern(ast, sep);
+    }
     else if (strcmp(sep.line[1], ".data") == 0 ||
              strcmp(sep.line[0], ".data") == 0)
     {
@@ -348,7 +353,11 @@ void set_instruction(struct ast *ast, struct sep_line sep)
     {
         set_string(ast, sep);
     }
-    
+
+    else
+    {
+        error_found(ast, "error-undefined instruction");
+    }
 }
 
 /**
@@ -363,13 +372,23 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
 
     if (sep.line_number < 2)
     {
-        error_found(ast, "error-missing label name");
+        error_found(ast, "missing label name");
         return *ast;
     }
-    if (sep.line_number > 2)
+    if (sep.line_number > 2 && ast->label_name[0] != '\0')
     {
-        error_found(ast, "error-too many arguments");
+        printf("entry/extern will not use the label name\n");
+        ast->label_name[0] = '\0';
+        if (strcmp(sep.line[1], ".entry") == 0 || strcmp(sep.line[1], "entry") == 0)
+        {
 
+            ast->line_type_data.inst.inst_type = entry, ast->ARE.ARE_type = R;
+        }
+        else
+        {
+            ast->line_type_data.inst.inst_type = extrn, ast->ARE.ARE_type = E;
+        }
+        set_label(ast, sep, 2);
         return *ast;
     }
 
@@ -464,6 +483,28 @@ void set_command_name(struct ast *ast, char *command)
     }
 
     ast->line_type_data.command.opcode = 0;
+}
+
+/**
+ * @brief Set the argument amount object withouht the command name
+ *
+ * @param ast
+ * @param sep
+ * @return int
+ */
+int set_argument_amount(struct ast *ast, struct sep_line sep)
+{
+    int i;
+    int count = 0;
+    for (i = 0; i < sep.line_number; i++)
+    {
+        if (strcmp(sep.line[i], ",") == 0)
+        {
+            continue;
+        }
+        count++;
+    }
+    return count;
 }
 
 #endif
