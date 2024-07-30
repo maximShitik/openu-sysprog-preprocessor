@@ -12,8 +12,6 @@
 
 #define HASH_SIZE 100
 
-
-
 int main(int argc, char *argv[])
 {
     int line_number;
@@ -50,7 +48,6 @@ int main(int argc, char *argv[])
     }
     hash_reset(hash_table);
     find_macro(line, hash_table, as_file, am_file, the_error);
-    
 
     if (strcmp(the_error, "") != 0)
     {
@@ -71,8 +68,13 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        first_pass("am_file", parsed_file, &program, hash_table);
-       
+        if (first_pass("am_file", parsed_file, &program, hash_table))
+        {
+            fclose(parsed_file);
+            free_memory(hash_table);
+            remove("output.am");
+            return EXIT_FAILURE;
+        }
 
         fclose(parsed_file);
     }
