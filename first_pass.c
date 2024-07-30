@@ -19,7 +19,7 @@ struct symbol *symbol_search(struct symbol *sym_table, int size, char *name)
     return NULL;
 }
 
-int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,struct hash *hash_table[])
+int first_pass(char *file_name, FILE *am_file, struct translation_unit *program, struct hash *hash_table[])
 {
     struct ast line_ast = {0};
     int i;
@@ -37,11 +37,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
 
     while (fgets(line, sizeof(line), am_file))
     {
-        if (line[0] == ';' || line[0] == '\n' || line[0] == '\r')
-        { /*skipping the eampty lines and note lines*/
-            continue;
-        }
-        line_ast = parse_line(line,hash_table); /*parsing the line to an AST*/
+        line_ast = parse_line(line, hash_table); /*parsing the line to an AST*/
         if (line_ast.line_type == error_line)
         {
             printf("Syntex error in line %d: %s\n", line_number, line_ast.error.type);
@@ -59,14 +55,15 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
             {
                 if (symbol_found->symbol_type == entry_type)
                 {
-                    program->symbol_table[program->symbol_count].symbol_type = line_ast.line_type == command_line ? code_type : data_type;
-                    program->symbol_table[program->symbol_count].address = line_ast.line_type == command_line ? ic : dc;
+                    symbol_found->symbol_type= line_ast.line_type == command_line ? code_type : data_type;
+                    symbol_found->address = line_ast.line_type == command_line ? ic : dc;
                 }
-                else /*if the name*/
+                else /*if the name is not entry and we already have it in the table */
                 {
 
-                    printf("Error in line %d: %s\n", line_number, "label already defined");
+                    printf("Error in %s line %d: %s is already defined \n", file_name, line_number,line_ast.label_name);
                     is_error = 1;
+                    continue;
                 }
             }
             else
@@ -78,14 +75,22 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
             }
         }
 
-        if (line_ast.line_type == command_line)
+        if (line_ast.line_type == command_line) /*updating the ic */
         {
-            ic++;
+
             if (line_ast.line_type_data.command.opcode_type[0].command_type == reg && line_ast.line_type_data.command.opcode_type[1].command_type == reg)
                 ic++;
             else
             {
-                ic = ic + 2;
+                /*counting the number of the arguments for the ic wihouth the label name and command*/
+                if (line_ast.label_name[0] != '\0')
+                {
+                    ic += line_ast.argument_count - 2;
+                }
+                else
+                {
+                    ic += line_ast.argument_count - 1;
+                }
             }
         }
 
@@ -111,10 +116,10 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
                 program->DC = dc;
             }
 
-            if (line_ast.line_type_data.inst.inst_type == entry || line_ast.line_type_data.inst.inst_type == extrn)
+            else if (line_ast.line_type_data.inst.inst_type == entry || line_ast.line_type_data.inst.inst_type == extrn)
             {
-                symbol_found = symbol_search(program->symbol_table, program->symbol_count, line_ast.line_type_data.inst.label_array[1]);
-                if (symbol_found && symbol_found->symbol_type == entry_type)
+                symbol_found = symbol_search(program->symbol_table, program->symbol_count, line_ast.line_type_data.inst.label_array[0]);
+                if (symbol_found && line_ast.line_type_data.inst.inst_type == entry)
                 {
                     if (symbol_found->symbol_type == code_type)
                     {
@@ -124,19 +129,22 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
                     {
                         symbol_found->symbol_type = entry_data_type;
                     }
-
-                    else if (!symbol_found)
-                    {
-                        strcpy(program->symbol_table[program->symbol_count].symbol_name, line_ast.line_type_data.inst.label_array[0]);
-                        program->symbol_table[program->symbol_count].symbol_type = line_ast.line_type_data.inst.inst_type == entry ? entry_type : extrn_type;
-                        program->symbol_count++;
-                    }
-
                     else
                     {
-                        printf("Error in line %d: %s\n", line_number, "label already defined");
+                        printf("Error in %s line %d: %s is already defined \n", file_name, line_number,line_ast.line_type_data.inst.label_array[0]);
                         is_error = 1;
                     }
+                }
+                else if (!symbol_found)
+                {
+                    strcpy(program->symbol_table[program->symbol_count].symbol_name, line_ast.line_type_data.inst.label_array[0]);
+                    program->symbol_table[program->symbol_count].symbol_type = line_ast.line_type_data.inst.inst_type == entry ? entry_type : extrn_type;
+                    program->symbol_count++;
+                }
+                else/*if we dont have the symbole in the table and its not an entry its a redefenition*/
+                {
+                    printf("Error in %s line %d: %s is already defined \n", file_name, line_number,line_ast.line_type_data.inst.label_array[0]);
+                    is_error = 1;
                 }
             }
         }
@@ -147,7 +155,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
     {
         if (program->symbol_table[i].symbol_type == entry_type)
         {
-            printf("Error in line %d: %s\n", line_number, "label already defined");
+            printf("Error in %s line %d: %s\n", file_name, line_number, program->symbol_table[i].symbol_name);
             is_error = 1;
         }
         if (program->symbol_table[i].symbol_type == data_type || program->symbol_table[i].symbol_type == entry_data_type)
