@@ -1,3 +1,5 @@
+#ifndef LEXER_C
+#define LEXER_C
 /*
 This file is taking a line from the input file and parsing it to an AST node.
 The AST node is then returned.
@@ -9,8 +11,6 @@ The file prosses the line and checks :
 5) If the line is an error line, it sets the error message and returns an eampty AST node with the error messege only.
 */
 
-#ifndef LEXER_C
-#define LEXER_C
 #include "lexer.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +19,7 @@ The file prosses the line and checks :
 #include "help_func.c"
 #include "lexer_func.h"
 #include "lexer_func.c"
+#include "data_structs.h"
 
 /**
  * @brief cheking to witch group of operand the command belongs
@@ -63,7 +64,6 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep,
 
     int current;
     current = 0;
-
     if (strcmp(sep.line[1], ",") == 0)
     {
         error_found(ast, "error-extra comma");
@@ -94,15 +94,18 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep,
     }
     if (system_names(sep.line[current]) == registerr)
     {
-        ast->line_type_data.command.opcode_type[0].command_type = reg;
+        ast->line_type_data.command.opcode_type[0].command_type = reg_direct;
         if (strpbrk(sep.line[current], "*") == NULL)
         {
             ast->line_type_data.command.opcode_type[0].regg =
                 atoi(sep.line[current] + 1);
         }
         else
+        {
             ast->line_type_data.command.opcode_type[0].regg =
                 atoi(sep.line[current] + 2);
+            ast->line_type_data.command.opcode_type[0].command_type = reg;
+        }
     }
 
     if (sep.line[++current] == NULL)
@@ -331,7 +334,7 @@ struct ast line_type(struct sep_line sep, struct ast *ast)
  * @param line
  * @return struct ast
  */
-struct ast parse_line(char *line)
+struct ast parse_line(char *line, struct hash *hash_table[])
 {
     struct ast ast;
     struct sep_line separated = next_word(line);
@@ -343,7 +346,12 @@ struct ast parse_line(char *line)
     }
 
     reset_ast(&ast);
+    ast.argument_count = set_argument_amount(&ast, separated);
     line_type(separated, &ast);
+    if (ast.label_name[0] != '\0' && search_in_hash(ast.label_name, hash_table) != NULL)
+    {
+        error_found(&ast, "error-label is a macro name");
+    }
     return ast;
 }
 
