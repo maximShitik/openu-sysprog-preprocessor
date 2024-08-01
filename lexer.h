@@ -1,10 +1,15 @@
 #ifndef LEXER_H
 #define LEXER_H
-#define MAX_LINE 80
+#define MAX_LINE 81
+#define FIRST_WORD 0
+#define SECOND_WORD 1
+#define THIRD_WORD 2
 #define MAX_LABEL 32
+#define MAX_DATA 300
 #define FALSE 0
 #define TRUE 1
 #define SPACES " \t\n , "
+#include "data_structs.h"
 
 struct sep_line
 {
@@ -61,14 +66,13 @@ typedef struct ast
         {
             enum
             {
-                mov = 1,
+                mov = 0,
                 cmp,
                 add,
                 sub,
                 lea,
-
-                nt,
                 clr,
+                nt,
                 inc,
                 dec,
                 jmp,
@@ -76,7 +80,6 @@ typedef struct ast
                 red,
                 prn,
                 jsr,
-
                 rts,
                 stop
             } opcode;
@@ -87,9 +90,9 @@ typedef struct ast
                 {
                     none,
                     number,
+                    label,
                     reg,
-                    label
-
+                    reg_direct
                 } command_type;
 
                 char *labell[2];
@@ -103,24 +106,25 @@ typedef struct ast
     } line_type_data;
     struct
     {
-        char type[300];
+        char type[MAX_DATA];
 
     } error;
     struct
     {
         enum
         {
-            A,
+            E,
             R,
-            E
+            A
         } ARE_type;
     } ARE;
 
     char label_name[MAX_LABEL];
+    int argument_count;
 
 } ast;
 
-struct ast parse_line(char *line);
+struct ast parse_line(char *line, struct hash *hash_table[]);
 struct ast one_group_command(struct ast *ast, struct sep_line sep, char *command);
 int operand_group(struct ast *ast, char *command);
 
