@@ -292,7 +292,7 @@ struct ast set_string(struct ast *ast, struct sep_line sep)
     }
     if (sep.line[i] == NULL)
     {
-        error_found(ast, "invalid string");
+        error_found(ast, "Invalid string , NOTE curly type quotes ” are not the same as the regular ones.");
         return *ast;
     }
     if (i < sep.line_number && is_string(sep.line[i], ast))
@@ -375,9 +375,9 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
         error_found(ast, "missing label name");
         return *ast;
     }
-    
+
     if (sep.line_number > 2 && ast->label_name[0] != '\0')
-    {   
+    {
         printf("Warning - entry/extern will not use the label name\n");
         reset_ast(ast);
         ast->line_type = inst_line;
@@ -390,9 +390,9 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
         {
             ast->line_type_data.inst.inst_type = extrn, ast->ARE.ARE_type = E;
         }
-        
+
         set_label(ast, sep, 2);
-        ast->label_name[0] = '\0';/*setting only the first letter to \0 so we will not use the name*/
+        ast->label_name[0] = '\0'; /*setting only the first letter to \0 so we will not use the name*/
         return *ast;
     }
 
@@ -421,7 +421,7 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
 struct ast set_label(struct ast *ast, struct sep_line sep, int index)
 {
     size_t len = strlen(sep.line[index]);
-    if(system_names(sep.line[index]) != TRUE || is_int(sep.line[index], ast) || is_string(sep.line[index], ast))
+    if (system_names(sep.line[index]) != TRUE || is_int(sep.line[index], ast) || is_string(sep.line[index], ast))
     {
         error_found(ast, "invalid label name");
         return *ast;
@@ -431,28 +431,36 @@ struct ast set_label(struct ast *ast, struct sep_line sep, int index)
     {
         len--;
         strncpy(ast->label_name, sep.line[index], len);
+        return *ast;
     }
-    if (ast->line_type_data.inst.label_array[0] == NULL)
+    if (ast->line_type == inst_line)
     {
-        if (ast->line_type == inst_line)
+        if (ast->line_type_data.inst.label_array[0] == NULL)
         {
+
             ast->line_type_data.inst.label_array[0] = sep.line[index];
             ast->line_type_data.inst.label_array[1] = NULL;
         }
-        else if (ast->line_type == command_line)
+
+        else
+        {
+            ast->line_type_data.inst.label_array[1] = sep.line[index];
+        }
+    }
+
+    else if (ast->line_type == command_line)
+    {
+        if (ast->line_type_data.command.opcode_type[0].labell[0] != NULL)
+        {
+
+            ast->line_type_data.command.opcode_type[1].command_type = label;
+            ast->line_type_data.command.opcode_type[1].labell[0] = sep.line[index];
+        }
+        else
         {
             ast->line_type_data.command.opcode_type[0].command_type = label;
             ast->line_type_data.command.opcode_type[0].labell[0] = sep.line[index];
         }
-    }
-    else if (ast->line_type == inst_line)
-    {
-        ast->line_type_data.inst.label_array[1] = sep.line[index];
-    }
-    else if (ast->line_type == command_line)
-    {
-        ast->line_type_data.command.opcode_type[1].command_type = label;
-        ast->line_type_data.command.opcode_type[1].labell[0] = sep.line[index];
     }
 
     else
