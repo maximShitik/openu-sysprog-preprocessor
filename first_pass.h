@@ -16,31 +16,31 @@ struct symbol
         entry_code_type,
         entry_data_type
     } symbol_type;
-    
+    struct symbol *next;
 };
-
 
 struct ext
 {
-    char *ext_name[MAX_LINE];
+    char ext_name[MAX_LINE];
     int address;
     int exter_count;
+    int address_counter;
+    struct ext *next;
 };
+
 
 struct translation_unit
 {
     int code_array[MAX_LINE];
     int data_array[MAX_LINE];
-    struct symbol symbol_table[MAX_LINE];
-    int symbol_count;
-    struct ext ext_table[MAX_LINE];
+    struct symbol *symbol_table; 
+    struct ext *ext_table;
     int IC;
     int DC;
-    struct symbol *enrty[MAX_LINE];
-    int enrty_count;
+    struct symbol *entry[MAX_LINE];
+    int entry_count;
 };
 
-
-int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,struct hash *hash_table[]);
-
+int first_pass(char *file_name, FILE *am_file, struct translation_unit *program, struct hash *hash_table[]);
+struct symbol *symbol_search(struct symbol *head, char *name);
 #endif
