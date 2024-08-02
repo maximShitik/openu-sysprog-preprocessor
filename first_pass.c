@@ -109,7 +109,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
 
             if (line_ast.line_type_data.inst.inst_type == data)
             {
-                memcpy(&program->data_array[dc], line_ast.line_type_data.inst.data_array, sizeof(int) * line_ast.line_type_data.inst.data_counter);
+                memcpy(&program->data_array[program->DC], line_ast.line_type_data.inst.data_array, sizeof(int) * line_ast.line_type_data.inst.data_counter);
                 dc += line_ast.line_type_data.inst.data_counter;
                 program->DC=dc;
             }
@@ -117,7 +117,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
             {
                 for (i = 0; i < line_ast.line_type_data.inst.data_counter; i++)
                 {
-                    program->data_array[dc + i] = (int)*line_ast.line_type_data.inst.string_array[i];
+                    program->data_array[program->DC + i] = (int)*line_ast.line_type_data.inst.string_array[i];
                 }
                 dc+=line_ast.line_type_data.inst.data_counter+1;
                 program->DC=dc;
