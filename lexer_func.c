@@ -450,7 +450,7 @@ struct ast set_label(struct ast *ast, struct sep_line sep, int index)
 
     else if (ast->line_type == command_line)
     {
-        if (ast->line_type_data.command.opcode_type[0].labell[0] != NULL)
+        if (ast->line_type_data.command.opcode_type[0].command_type!=none)
         {
 
             ast->line_type_data.command.opcode_type[1].command_type = label;
