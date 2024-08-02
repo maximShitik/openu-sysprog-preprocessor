@@ -37,6 +37,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
     int line_number;
     struct symbol *symbol_found;
     struct symbol *new_symbol;
+    struct entry *entry_symbol;
     int ic, dc;
     ic = 100, dc = 0;
     is_error = 0;
@@ -62,7 +63,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
             {
                 if (symbol_found->symbol_type == entry_type)
                 {
-                    symbol_found->symbol_type = line_ast.line_type == command_line ? code_type : data_type;
+                    symbol_found->symbol_type = line_ast.line_type == command_line ? entry_code_type : entry_data_type;
                     symbol_found->address = line_ast.line_type == command_line ? ic : dc;
                 }
                 else /*if the name is not entry and we already have it in the table */
@@ -85,8 +86,9 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
 
         if (line_ast.line_type == command_line) /*updating the ic */
         {
+            ic++;
 
-            if (line_ast.line_type_data.command.opcode_type[0].command_type == reg && line_ast.line_type_data.command.opcode_type[1].command_type == reg)
+            if (SOURCE_AND_TARGET_ARE_REGISTERS)
                 ic++;
             else
             {
@@ -102,20 +104,23 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
             }
         }
 
-        else if (line_ast.line_type == inst_line)/*coding the instructions to the transletion unit */
+        else if (line_ast.line_type == inst_line) /*coding the instructions to the transletion unit */
         {
 
             if (line_ast.line_type_data.inst.inst_type == data)
             {
                 memcpy(&program->data_array[dc], line_ast.line_type_data.inst.data_array, sizeof(int) * line_ast.line_type_data.inst.data_counter);
                 dc += line_ast.line_type_data.inst.data_counter;
+                program->DC=dc;
             }
             else if (line_ast.line_type_data.inst.inst_type == string)
             {
                 for (i = 0; i < line_ast.line_type_data.inst.data_counter; i++)
-                {   
-                    program->data_array[dc + i] =(int)*line_ast.line_type_data.inst.string_array[i];
+                {
+                    program->data_array[dc + i] = (int)*line_ast.line_type_data.inst.string_array[i];
                 }
+                dc+=line_ast.line_type_data.inst.data_counter+1;
+                program->DC=dc;
             }
 
             else if (line_ast.line_type_data.inst.inst_type == entry || line_ast.line_type_data.inst.inst_type == extrn)
@@ -144,7 +149,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
                     new_symbol->symbol_type = (line_ast.line_type_data.inst.inst_type == entry) ? entry_type : extrn_type;
                     symbol_insert(&program->symbol_table, new_symbol);
                 }
-                else /*if we dont have the symbole in the table and its not an entry its a redefenition*/
+                else /*if we dont have the symbol in the table and its not an entry its a redefenition*/
                 {
                     printf("Error in %s line %d: %s is already defined \n", file_name, line_number, line_ast.line_type_data.inst.label_array[0]);
                     is_error = 1;
@@ -165,10 +170,15 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
         {
             current->address += ic;
         }
-        if (current->symbol_type == entry_code_type)
+        if (current->symbol_type == entry_code_type || current->symbol_type == entry_data_type)
         {
-            program->entry[program->entry_count] = current;
+
+            entry_symbol = (struct entry *)malloc(sizeof(struct entry));
+            strcpy(entry_symbol->entry_name, current->symbol_name);
+            entry_symbol->address = current->address;
+            entry_symbol->next = program->entry_table;
             program->entry_count++;
+            program->entry_table = entry_symbol;
         }
         current = current->next;
     }
