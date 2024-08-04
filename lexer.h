@@ -11,6 +11,7 @@
 #define SPACES " \t\n , "
 #include "data_structs.h"
 
+
 struct sep_line
 {
     char *line[MAX_LINE];
