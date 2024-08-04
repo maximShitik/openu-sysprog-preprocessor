@@ -1,8 +1,11 @@
-#include "first_pass.h"
+#ifndef SECOND_PASS_C
+#define SECOND_PASS_C
+#include "data_structs.h"
 #include "lexer.h"
+#include "first_pass.h"
+#include "second_pass.h"
 #include <stdlib.h>
 #include <string.h>
-#include "second_pass.h"
 
 void set_first_word(struct ast line_ast, struct translation_unit *program)
 {
@@ -94,28 +97,26 @@ int second_pass(char *file_name, FILE *am_file, struct translation_unit *program
             }
             else
             {
-                
-                for(i = 0; i < 2; i++)
+
+                for (i = 0; i < 2; i++)
                 {
                     if (COMMAND_TYPE == number)
                     {
                         SET_ADRESS.numberr << 3;
                         ARE
-
-                          
                     }
                     else if (COMMAND_TYPE == reg || COMMAND_TYPE == reg_direct)
                     {
                         if (i == 0)
                         {
                             SET_SOURCE.regg << BITS_6_8;
+                            ARE
                         }
                         else
                         {
                             SET_TARGET.regg << BITS_3_5;
+                            ARE
                         }
-                       
-                       
                     }
                     else if (COMMAND_TYPE == label)
                     {
@@ -129,15 +130,21 @@ int second_pass(char *file_name, FILE *am_file, struct translation_unit *program
                                 ext_found = ext_search(program->ext_table, line_ast.line_type_data.command.opcode_type[i].labell[0]);
                                 if (ext_found)
                                 {
-                                    ext_found->address = program->IC + 100;
-                                    new_ext->address_counter++;
+
+                                    ext_found->address_counter++;
+                                    ext_found->address_head->next_address = (struct address *)malloc(sizeof(struct address));
+                                    ext_found->address_head->next_address->address = program->IC + 100;
+                                    ext_found->address_head->next_address->next_address = NULL;
                                 }
                                 else
                                 {
+
                                     new_ext = (struct ext *)malloc(sizeof(struct ext));
                                     strcpy(new_ext->ext_name, line_ast.line_type_data.command.opcode_type[i].labell[0]);
-                                    new_ext->address = program->IC + 100;
-                                    new_ext->exter_count++;
+                                    new_ext->address_head = (struct address *)malloc(sizeof(struct address));
+                                    new_ext->address_head->address = program->IC + 100;
+                                    new_ext->address_head->next_address = NULL;
+                                    program->exter_count++;
                                     new_ext->next = program->ext_table;
                                     new_ext->address_counter++;
                                     program->ext_table = new_ext;
@@ -150,18 +157,26 @@ int second_pass(char *file_name, FILE *am_file, struct translation_unit *program
                         }
                         else
                         {
-                            printf("Error in %s line %d: %s is not defined label \n", file_name, line_number, line_ast.line_type_data.command.opcode_type[i].labell[0]);
-                              is_error = 1;
+                            printf("Error in %s line %d: %s is undefined label \n", file_name, line_number, line_ast.line_type_data.command.opcode_type[i].labell[0]);
+
+                            is_error = 1;
                         }
                     }
-                    if(COMMAND_TYPE!=none)
+                    if (COMMAND_TYPE != none)
                     {
-                         program->IC++;
+                        program->IC++;
                     }
                 }
             }
         }
         line_number++;
     }
-    return 0;
+
+    if (is_error)
+    {
+        free_translation_unit(program);
+    }
+    return is_error;
 }
+
+#endif
