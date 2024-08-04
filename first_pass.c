@@ -2,11 +2,62 @@
 #define FIRST_PASS_C
 
 #include "first_pass.h"
+#include "data_structs.h"
+#include "lexer.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "data_structs.h"
-#include "lexer.h"
+
+
+void free_translation_unit(struct translation_unit *program)
+{
+    struct symbol *current_symbol;
+    struct symbol *next_symbol;
+    struct ext *current_ext;
+    struct ext *next_ext;
+    struct entry *current_entry;
+    struct entry *next_entry;
+    struct address *current_address;
+    struct address *next_address;
+    int i;
+
+    current_symbol = program->symbol_table;
+    while (current_symbol)
+    {
+        next_symbol = current_symbol->next;
+        free(current_symbol);
+        current_symbol = next_symbol;
+    }
+
+    current_ext = program->ext_table;
+    while (current_ext)
+    {
+        next_ext = current_ext->next;
+        current_address = current_ext->address_head;
+        while (current_address)
+        {
+            next_address = current_address->next_address;
+            free(current_address);
+            current_address = next_address;
+        }
+        free(current_ext);
+        current_ext = next_ext;
+    }
+    current_entry = program->entry_table;
+    while (current_entry)
+    {
+        next_entry = current_entry->next;
+        free(current_entry);
+        current_entry = next_entry;
+    }
+    free(current_entry);
+
+    for (i = 0; i < program->IC; i++)
+    {
+        program->code_array[i] = 0;
+        program->data_array[i] = 0;
+    }
+}
 
 struct symbol *symbol_search(struct symbol *head, char *name)
 {
@@ -111,7 +162,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
             {
                 memcpy(&program->data_array[program->DC], line_ast.line_type_data.inst.data_array, sizeof(int) * line_ast.line_type_data.inst.data_counter);
                 dc += line_ast.line_type_data.inst.data_counter;
-                program->DC=dc;
+                program->DC = dc;
             }
             else if (line_ast.line_type_data.inst.inst_type == string)
             {
@@ -119,8 +170,8 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
                 {
                     program->data_array[program->DC + i] = (int)*line_ast.line_type_data.inst.string_array[i];
                 }
-                dc+=line_ast.line_type_data.inst.data_counter+1;
-                program->DC=dc;
+                dc += line_ast.line_type_data.inst.data_counter + 1;
+                program->DC = dc;
             }
 
             else if (line_ast.line_type_data.inst.inst_type == entry || line_ast.line_type_data.inst.inst_type == extrn)
@@ -187,3 +238,5 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
 }
 
 #endif
+
+/*לבדוק איך השורות שאמורות להיות דיסי מקדמות את מספר השורות הקובץ פלט לפי הקובץ/מתחברות ל איסי. פוור פוינט*/
