@@ -2,6 +2,7 @@
 #define LEXER_FUNC_H
 #include "lexer.h"
 #include "help_func.h"
+#include "data_structs.h"
 #define SPACES " \t\n , "
 void error_found(struct ast *ast, char *error_message);
 struct ast set_label(struct ast *ast, struct sep_line sep, int index);
