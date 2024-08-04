@@ -1,7 +1,6 @@
 #ifndef DATA_STRUCTS_C
 #define DATA_STRUCTS_C
 #include "data_structs.h"
-#include "first_pass.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +13,8 @@
  */
 void hash_reset(hash *hash_table[])
 {
+   
+
     for (int i = 0; i < HASH_SIZE; i++)
     {
         hash_table[i] = NULL;
@@ -114,7 +115,7 @@ void insert_to_hash(char *data, hash *hash_table[], int index, int name)
  *
  * @param hash_table
  */
-void free_memory(hash *hash_table[])
+void free_hash(hash *hash_table[])
 {
     for (int i = 0; i < HASH_SIZE; i++)
     {
@@ -159,7 +160,5 @@ hash *search_in_hash(char *macro_name, hash *hash_table[])
     }
     return NULL;
 }
-
-
 
 #endif
