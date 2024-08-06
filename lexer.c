@@ -174,11 +174,10 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep,
 struct ast one_group_command(struct ast *ast, struct sep_line sep,
                              char *command)
 {
-    int i;
+
     int current;
     current = 0;
 
-    i = 0;
     if (strcmp(command, "not") == 0)
         ast->line_type_data.command.opcode = nt;
     else
