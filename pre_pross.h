@@ -10,10 +10,11 @@ enum
     regular_line = -2,
     endmacro = -3,
     macro_defenition = -4,
+    first_int=-5
 };
 
 int line_defenition(char *line, struct sep_line separated, char error[MAX_LINE]);
-void find_macro(char *line, hash *hash_table[], FILE *input,FILE *output,char error[MAX_LINE]);
+char *pre_prossesor(char *line, hash *hash_table[], char *input);
 
 
 
