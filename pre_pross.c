@@ -1,4 +1,3 @@
-
 #ifndef PRE_PROSS_C
 #define PRE_PROSS_C
 #include <stdio.h>
@@ -9,8 +8,7 @@
 #include "pre_pross.h"
 #include "help_func.h"
 
-
-int line_defenition(char *line, struct sep_line separated,char error[MAX_LINE])
+int line_defenition(char *line, struct sep_line separated, char error[MAX_LINE])
 {
     if (strcmp(separated.line[0], "macr") == 0)
     {
@@ -56,7 +54,7 @@ int line_defenition(char *line, struct sep_line separated,char error[MAX_LINE])
     }
 }
 
-void find_macro(char *line, hash *hash_table[], FILE *input, FILE *output,char error[MAX_LINE])
+void find_macro(char *line, hash *hash_table[], FILE *input, FILE *output, char error[MAX_LINE])
 {
     int index_copy;
     hash *macro_found;
@@ -65,7 +63,6 @@ void find_macro(char *line, hash *hash_table[], FILE *input, FILE *output,char e
     name_index = 0;
     char *line_copy;
     index_copy = 0;
-    
 
     while (fgets(line, MAX_LINE, input))
     {
@@ -86,8 +83,6 @@ void find_macro(char *line, hash *hash_table[], FILE *input, FILE *output,char e
 
         if (name_index == Error)
         {
-            fclose(input);
-            remove("output.am");
             free(line_copy);
             return;
         }
@@ -111,12 +106,13 @@ void find_macro(char *line, hash *hash_table[], FILE *input, FILE *output,char e
             }
             else
             {
-                macro_found = search_macro_in_hash(line_copy, hash_table);
+                macro_found = search_in_hash(line_copy, hash_table);
                 /*searching if the macro is in the hash so we will add it to the file*/
+
                 if (macro_found != NULL)
                 {
                     /*add the hash data to the as file*/
-                    line_node *current_line = macro_found->lines;
+                    line_node *current_line = macro_found->data;
                     while (current_line != NULL)
                     {
                         fprintf(output, "%s\n", current_line->line_data);
