@@ -1,22 +1,27 @@
 #ifndef MAIN_C
 #define MAIN_C
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+
 #include "lexer.h"
 #include "lexer.c"        /*before copyng to the ubuntu need to be changed to .h*/
 #include "pre_pross.c"    /*before copyng to the ubuntu need to be changed to .h*/
 #include "data_structs.c" /*before copyng to the ubuntu need to be changed to .h*/
 #include "first_pass.h"
 #include "first_pass.c"
+#include "second_pass.c"
+#include "back_end.h"
+#include "back_end.c"
 
-#define HASH_SIZE 100
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+
 
 int main(int argc, char *argv[])
 {
     int line_number;
+    struct translation_unit program = {0};
     char parsed_line[MAX_LINE];
-    struct translation_unit program;
     struct ast result;
     FILE *am_file;
     FILE *as_file;
@@ -24,7 +29,7 @@ int main(int argc, char *argv[])
     char line[MAX_LINE];
     hash *hash_table[HASH_SIZE];
     char the_error[MAX_LINE];
-    strcpy(the_error, "");
+    program.symbol_table = NULL; /*setting the head to null*/
     line_number = 0;
     if (argc != 2)
     {
@@ -54,7 +59,7 @@ int main(int argc, char *argv[])
         printf("Error in pre-prossesor: %s\n", the_error);
         fclose(am_file);
         remove("output.am");
-        free_memory(hash_table);
+        free_hash(hash_table);
     }
     else
     {
@@ -71,12 +76,24 @@ int main(int argc, char *argv[])
         if (first_pass("am_file", parsed_file, &program, hash_table))
         {
             fclose(parsed_file);
-            free_memory(hash_table);
+            free_translation_unit(&program);
+            free_hash(hash_table);
             remove("output.am");
             return EXIT_FAILURE;
         }
+        else
 
-        fclose(parsed_file);
+        {
+            rewind(parsed_file);
+            if (second_pass("am_file", parsed_file, &program, hash_table))
+            {
+                free_translation_unit(&program);
+                free_hash(hash_table); 
+                fclose(parsed_file);
+            }
+            else
+            printing_files("am_file", &program);
+        }
     }
     return EXIT_SUCCESS;
 }
