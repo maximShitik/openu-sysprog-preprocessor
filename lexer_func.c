@@ -210,7 +210,7 @@ int is_string(char *line, struct ast *ast)
 struct ast set_data(struct ast *ast, struct sep_line sep)
 {
     int i, j;
-
+    char *num_str;
     j = 0;
     for (i = 0; i < sep.line_number; i++)
     {
@@ -224,7 +224,7 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
                 return *ast;
             }
 
-            char *num_str = sep.line[i];
+            num_str = sep.line[i];
             if (num_str[0] == '#')
             {
                 num_str++;
@@ -284,7 +284,6 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
         }
     }
 
-    
     return *ast;
 }
 
@@ -302,7 +301,7 @@ struct ast set_string(struct ast *ast, struct sep_line sep)
     }
     if (sep.line[i] == NULL)
     {
-        error_found(ast, "Invalid string , NOTE curly type quotes ” are not the same as the regular ones.");
+        error_found(ast, "Invalid string");
         return *ast;
     }
     if (i < sep.line_number && is_string(sep.line[i], ast))
