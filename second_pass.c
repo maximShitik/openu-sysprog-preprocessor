@@ -147,9 +147,7 @@ int second_pass(char *file_name, FILE *am_file, struct translation_unit *program
     struct ast line_ast = {0};
     struct symbol *symbol_found;
     struct ext *ext_found;
-    struct ext *new_ext;
     int i;
-    char char_command[MAX_LINE];
     line_number = 0;
     is_error = 0;
 
@@ -157,7 +155,7 @@ int second_pass(char *file_name, FILE *am_file, struct translation_unit *program
     {
         line_ast = parse_line(line, hash_table); /*parsing the line to an AST*/
 
-        if (line_ast.line_type == command)
+        if (line_ast.line_type == command_line)
         {
             set_first_word(line_ast, program);
 
