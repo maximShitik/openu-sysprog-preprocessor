@@ -111,7 +111,7 @@ void symbol_insert(struct symbol **head, struct symbol *new_symbol)
 
 int first_pass(char *file_name, FILE *am_file, struct translation_unit *program, struct hash *hash_table[])
 {
-    struct ast line_ast = {0};
+    
     struct symbol *current;
     int i;
     int is_error;
@@ -119,8 +119,8 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
     int line_number;
     struct symbol *symbol_found;
     struct symbol *new_symbol;
-    struct entry *entry_symbol;
     int ic, dc;
+    struct ast line_ast = {0};
     ic = 100, dc = 0;
     is_error = 0;
     i = 0;
