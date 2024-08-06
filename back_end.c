@@ -14,6 +14,8 @@ void print_object_file(char *file_name, struct translation_unit *program)
     FILE *object_file;
     char *object_file_name;
     int i, j;
+    int value;
+    char *dot;
     int line_number = 100;
 
     object_file_name = (char *)malloc(strlen(file_name) + OB);
@@ -21,12 +23,25 @@ void print_object_file(char *file_name, struct translation_unit *program)
     {
         MEMORY_FAIL;
     }
+
     strcpy(object_file_name, file_name);
-    strcat(object_file_name, ".ob");
+
+    dot = strrchr(object_file_name, '.');
+
+    if (dot == NULL)
+    {
+        strcat(object_file_name, ".ob");
+    }
+    else
+    {
+        strcpy(dot, ".ob");
+    }
+
     object_file = fopen(object_file_name, "w");
     if (object_file == NULL)
     {
-        printf("Error creating object file\n");
+        perror("Error creating object file");
+        free(object_file_name);
         exit(EXIT_FAILURE);
     }
 
@@ -34,14 +49,14 @@ void print_object_file(char *file_name, struct translation_unit *program)
     {
         fprintf(object_file, "%04d ", line_number);
 
-        int value = program->code_array[i];
+        value = program->code_array[i];
         if (value < 0)
         {
-            value = (~(-value) + 1) & 0x7FFF; /*Convert negative to positive and mask*/
+            value = (~(-value) + 1) & 0x7FFF; /* Convert negative to positive and mask */
         }
         else
         {
-            value = value & 0x7FFF; /*making it in the 15 but format*/
+            value = value & 0x7FFF; /* Make it in the 15-bit format */
         }
         for (j = 4; j >= 0; j--)
         {
@@ -54,7 +69,7 @@ void print_object_file(char *file_name, struct translation_unit *program)
     {
         fprintf(object_file, "%04d ", line_number);
 
-        int value = program->data_array[i];
+        value = program->data_array[i];
         if (value < 0)
         {
             value = (~(-value) + 1) & 0x7FFF;
@@ -80,51 +95,65 @@ void print_ext_file(char *file_name, struct translation_unit *program)
 {
     FILE *ext_file;
     char *ext_file_name;
-    int i;
     struct ext *current_ext;
     struct address *current_address;
+    char *dot;
+
     if (program->exter_count == 0)
+    {
         return;
+    }
+
+    ext_file_name = (char *)malloc(strlen(file_name) + ENT_OR_EXT);
+    if (ext_file_name == NULL)
+    {
+        MEMORY_FAIL;
+    }
+
+    strcpy(ext_file_name, file_name);
+
+    dot = strrchr(ext_file_name, '.');
+
+    if (dot == NULL)
+    {
+        strcat(ext_file_name, ".ext");
+    }
     else
     {
-        ext_file_name = (char *)malloc(strlen(file_name) + ENT_OR_EXT);
-        if (ext_file_name == NULL)
-        {
-            MEMORY_FAIL;
-        }
-        strcpy(ext_file_name, file_name);
-        strcat(ext_file_name, ".ext");
-        ext_file = fopen(ext_file_name, "w");
-        if (ext_file == NULL)
-        {
-            printf("Error creating external file\n");
-            exit(EXIT_FAILURE);
-        }
-
-        current_ext = program->ext_table;
-
-        while (current_ext != NULL)
-        {
-            current_address = current_ext->address_head;
-            if (current_ext->address_counter > 0)
-            {
-                while (current_address != NULL)
-                {
-                    fprintf(ext_file, "%s %04d \n",current_ext->ext_name, current_address->address);
-                    current_address = current_address->next_address;
-                }
-            }
-            else
-            {
-                fprintf(ext_file, "%s %04d \n", current_ext->ext_name, current_ext->address_head->address);
-            }
-            current_ext = current_ext->next;
-            
-        }
-
-        fflush(ext_file);
-        fclose(ext_file);
+        strcpy(dot, ".ext");
     }
+
+    ext_file = fopen(ext_file_name, "w");
+    if (ext_file == NULL)
+    {
+        perror("Error creating external file");
+        free(ext_file_name);
+        exit(EXIT_FAILURE);
+    }
+
+    current_ext = program->ext_table;
+
+    while (current_ext != NULL)
+    {
+        current_address = current_ext->address_head;
+        if (current_ext->address_counter > 0)
+        {
+            while (current_address != NULL)
+            {
+                fprintf(ext_file, "%s %04d \n", current_ext->ext_name, current_address->address);
+                current_address = current_address->next_address;
+            }
+        }
+        else
+        {
+            fprintf(ext_file, "%s %04d \n", current_ext->ext_name, current_ext->address_head->address);
+        }
+        current_ext = current_ext->next;
+    }
+
+    fflush(ext_file);
+    fclose(ext_file);
+
     free(ext_file_name);
 }
 
@@ -132,6 +161,7 @@ void print_entry_file(char *file_name, struct translation_unit *program)
 {
     FILE *entry_file;
     char *entry_file_name;
+    char *dot;
     struct entry *current_entry;
     if (program->entry_count == 0)
         return;
@@ -139,12 +169,21 @@ void print_entry_file(char *file_name, struct translation_unit *program)
     entry_file_name = (char *)malloc(strlen(file_name) + ENT_OR_EXT);
     if (entry_file_name == NULL)
     {
-        printf("Memory allocation error\n");
-        exit(EXIT_FAILURE);
+        MEMORY_FAIL;
     }
 
     strcpy(entry_file_name, file_name);
-    strcat(entry_file_name, ".ent");
+
+    dot = strrchr(entry_file_name, '.');
+
+    if (dot == NULL)
+    {
+        strcat(entry_file_name, ".ent");
+    }
+    else
+    {
+        strcpy(dot, ".ent");
+    }
 
     entry_file = fopen(entry_file_name, "w");
     if (entry_file == NULL)
