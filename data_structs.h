@@ -39,6 +39,8 @@ struct address
 {
     int address;
     struct address *next_address;
+    struct address *prev_address;
+
 };
 
 struct ext
@@ -47,14 +49,15 @@ struct ext
     struct address *address_head;
     int address_counter;
     struct ext *next;
+    struct ext *prev;
 };
 
 struct entry
 {
     char entry_name[MAX_LINE];
     int address;
-    int entry_count;
     struct entry *next;
+    struct entry *prev;
 };
 
 struct translation_unit
