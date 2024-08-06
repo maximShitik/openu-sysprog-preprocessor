@@ -8,7 +8,38 @@
 #include <stdlib.h>
 #include <string.h>
 
+void add_entry(struct translation_unit *program, char *symbol_name, int address)
+{
+    struct entry *entry_symbol;
+    struct entry *current_entry;
 
+    entry_symbol = (struct entry *)malloc(sizeof(struct entry));
+    if (entry_symbol == NULL)
+    {
+        printf("Memory allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+    strcpy(entry_symbol->entry_name, symbol_name);
+    entry_symbol->address = address;
+    entry_symbol->next = NULL;
+    entry_symbol->prev = NULL;
+
+    if (program->entry_table == NULL)
+    {
+        program->entry_table = entry_symbol;
+    }
+    else /*inserting the entry in the end of the list*/
+    {
+        current_entry = program->entry_table;
+        while (current_entry->next != NULL)
+        {
+            current_entry = current_entry->next;
+        }
+        current_entry->next = entry_symbol;
+        entry_symbol->prev = current_entry;
+    }
+    program->entry_count++;
+}
 void free_translation_unit(struct translation_unit *program)
 {
     struct symbol *current_symbol;
@@ -224,12 +255,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
         if (current->symbol_type == entry_code_type || current->symbol_type == entry_data_type)
         {
 
-            entry_symbol = (struct entry *)malloc(sizeof(struct entry));
-            strcpy(entry_symbol->entry_name, current->symbol_name);
-            entry_symbol->address = current->address;
-            entry_symbol->next = program->entry_table;
-            program->entry_count++;
-            program->entry_table = entry_symbol;
+            add_entry(program, current->symbol_name, current->address);
         }
         current = current->next;
     }
