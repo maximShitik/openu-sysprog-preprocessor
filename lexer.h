@@ -25,7 +25,7 @@ typedef enum return_types
     command,
     registerr,
     Entry,
-    Extrn,
+    Extrn
 
 } return_types;
 
