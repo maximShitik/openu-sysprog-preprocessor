@@ -143,15 +143,17 @@ struct ast two_group_command(struct ast *ast, struct sep_line sep,
     }
     if (system_names(sep.line[current]) == registerr)
     {
-        ast->line_type_data.command.opcode_type[1].command_type = reg;
+        ast->line_type_data.command.opcode_type[1].command_type = reg_direct;
         if (strpbrk(sep.line[current], "*") == NULL)
         {
             ast->line_type_data.command.opcode_type[1].regg =
                 atoi(sep.line[current] + 1);
         }
         else
-            ast->line_type_data.command.opcode_type[1].regg =
-                atoi(sep.line[current] + 2);
+        {
+            ast->line_type_data.command.opcode_type[1].regg = atoi(sep.line[current] + 2);
+            ast->line_type_data.command.opcode_type[1].command_type = reg;
+        }
     }
     else if (system_names(sep.line[current]) == TRUE && !is_int(sep.line[current], ast))
     {
@@ -177,7 +179,10 @@ struct ast one_group_command(struct ast *ast, struct sep_line sep,
     current = 0;
 
     i = 0;
-
+    if (strcmp(command, "not") == 0)
+        ast->line_type_data.command.opcode = nt;
+    else
+        set_command_name(ast, command);
     while (strcmp(sep.line[current], command) != 0)
     {
         current++;
@@ -185,7 +190,8 @@ struct ast one_group_command(struct ast *ast, struct sep_line sep,
     current++;
     if (system_names(sep.line[current]) == TRUE && !is_int(sep.line[current], ast))
     {
-        set_label(ast, sep, current);
+        ast->line_type_data.command.opcode_type[1].command_type = label;
+        ast->line_type_data.command.opcode_type[1].labell[0] = sep.line[current];
     }
     if (system_names(sep.line[current]) == registerr)
     {
@@ -197,15 +203,18 @@ struct ast one_group_command(struct ast *ast, struct sep_line sep,
         }
         else
         {
-            ast->line_type_data.command.opcode_type[i].command_type = reg;
+            ast->line_type_data.command.opcode_type[SECOND_WORD].command_type = reg_direct;
             if (strpbrk(sep.line[current], "*") == NULL)
             {
-                ast->line_type_data.command.opcode_type[i++].regg =
+                ast->line_type_data.command.opcode_type[SECOND_WORD].regg =
                     atoi(sep.line[current] + 1);
             }
             else
-                ast->line_type_data.command.opcode_type[i].regg =
+            {
+                ast->line_type_data.command.opcode_type[SECOND_WORD].regg =
                     atoi(sep.line[current] + 2);
+                ast->line_type_data.command.opcode_type[SECOND_WORD].command_type = reg;
+            }
         }
     }
     if (strcmp(command, "jmp") != 0 || strcmp(command, "bne") != 0)
@@ -228,10 +237,7 @@ struct ast one_group_command(struct ast *ast, struct sep_line sep,
             error_found(ast, "error-too many operands");
             return *ast;
         }
-        if (strcmp(command, "not") == 0)
-            ast->line_type_data.command.opcode = nt;
-        else
-            set_command_name(ast, command);
+
         return *ast;
     }
     else
@@ -241,6 +247,7 @@ struct ast one_group_command(struct ast *ast, struct sep_line sep,
 void no_operands_command(struct ast *ast, struct sep_line sep, char *command)
 {
     int current;
+    current = 0;
     while (strcmp(sep.line[current], command) != 0)
     {
         current++;
