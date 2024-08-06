@@ -234,18 +234,28 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
             {
                 ast->line_type_data.inst.data_array[j++] = atoi(num_str);
                 ast->line_type_data.inst.data_counter++;
+                ast->line_type_data.inst.inst_type = data;
             }
             else if (check_command_or_instruction(ast) == command)
             {
-                if (ast->line_type_data.command.opcode_type[j].command_type == none)
+                if (ast->line_type_data.command.opcode == prn)
                 {
-                    ast->line_type_data.command.opcode_type[j].command_type = number;
-                    ast->line_type_data.command.opcode_type[j].numberr = atoi(num_str);
+                    ast->line_type_data.command.opcode_type[SECOND_WORD].command_type = number;
+                    ast->line_type_data.command.opcode_type[SECOND_WORD].numberr = atoi(num_str);
                 }
                 else
                 {
-                    ast->line_type_data.command.opcode_type[++j].command_type = number;
-                    ast->line_type_data.command.opcode_type[j].numberr = atoi(num_str);
+                    if (ast->line_type_data.command.opcode_type[j].command_type == none)
+                    {
+                        ast->line_type_data.command.opcode_type[j].command_type = number;
+                        ast->line_type_data.command.opcode_type[j].numberr = atoi(num_str);
+                    }
+
+                    else
+                    {
+                        ast->line_type_data.command.opcode_type[++j].command_type = number;
+                        ast->line_type_data.command.opcode_type[j].numberr = atoi(num_str);
+                    }
                 }
             }
         }
@@ -274,7 +284,7 @@ struct ast set_data(struct ast *ast, struct sep_line sep)
         }
     }
 
-    ast->line_type_data.inst.inst_type = data;
+    
     return *ast;
 }
 
@@ -450,7 +460,8 @@ struct ast set_label(struct ast *ast, struct sep_line sep, int index)
 
     else if (ast->line_type == command_line)
     {
-        if (ast->line_type_data.command.opcode_type[0].command_type!=none)
+
+        if (ast->line_type_data.command.opcode_type[0].command_type != none)
         {
 
             ast->line_type_data.command.opcode_type[1].command_type = label;
