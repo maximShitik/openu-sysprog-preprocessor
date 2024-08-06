@@ -13,9 +13,9 @@
  */
 void hash_reset(hash *hash_table[])
 {
-   
+    int i;
 
-    for (int i = 0; i < HASH_SIZE; i++)
+    for (i = 0; i < HASH_SIZE; i++)
     {
         hash_table[i] = NULL;
     }
@@ -48,6 +48,7 @@ unsigned int hash_function(char *name)
 void insert_to_hash(char *data, hash *hash_table[], int index, int name)
 {
     hash *new_hash = (hash *)malloc(sizeof(hash));
+    hash *current;
     if (new_hash == NULL)
     {
         printf("Memory allocation error\n");
@@ -82,7 +83,7 @@ void insert_to_hash(char *data, hash *hash_table[], int index, int name)
         strcpy(new_line->line_data, data);
         new_line->next = NULL;
 
-        hash *current = hash_table[index];
+        current = hash_table[index];
         while (current->next != NULL)
         {
             current = current->next;
@@ -117,18 +118,22 @@ void insert_to_hash(char *data, hash *hash_table[], int index, int name)
  */
 void free_hash(hash *hash_table[])
 {
-    for (int i = 0; i < HASH_SIZE; i++)
+    int i;
+    hash *temp;
+    line_node *current_line;
+    line_node *temp_line;
+    for (i = 0; i < HASH_SIZE; i++)
     {
         hash *current = hash_table[i];
         while (current != NULL)
         {
-            hash *temp = current;
+            temp = current;
             current = current->next;
             free(temp->name);
-            line_node *current_line = temp->data;
+            current_line = temp->data;
             while (current_line != NULL)
             {
-                line_node *temp_line = current_line;
+                temp_line = current_line;
                 current_line = current_line->next;
                 free(temp_line->line_data);
                 free(temp_line);
