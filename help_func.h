@@ -9,6 +9,7 @@ int contains_uppercase(const char *str);
 int system_names(char *line);
 void reset_string_array(char **array, int size);
 void remove_backslashes(char *str);
+void free_string_array(char **array, int size);
 
 
 #endif
