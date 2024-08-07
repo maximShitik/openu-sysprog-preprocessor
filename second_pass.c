@@ -3,80 +3,9 @@
 #include "data_structs.h"
 #include "lexer.h"
 #include "first_pass.h"
+#include "help_func.h"
 #include "second_pass.h"
-#include <stdlib.h>
-#include <string.h>
 #include "macros.h"
-
-void add_address(struct translation_unit *program, struct ext *ext_found, int address)
-{
-    struct address *new_address;
-    struct address *current_address;
-
-    new_address = (struct address *)malloc(sizeof(struct address));
-    if (new_address == NULL)
-    {
-        MEMORY_FAIL;
-    }
-
-    new_address->address = address;
-    new_address->next_address = NULL;
-    new_address->prev_address = NULL;
-
-    if (ext_found->address_head == NULL)
-    {
-        ext_found->address_head = new_address;
-    }
-    else
-    {
-        current_address = ext_found->address_head;
-
-        while (current_address->next_address != NULL)
-        {
-            current_address = current_address->next_address;
-        }
-        current_address->next_address = new_address;
-        new_address->prev_address = current_address;
-    }
-    ext_found->address_counter++;
-}
-
-void add_extr(struct translation_unit *program, char *symbol_name, int address)
-{
-    struct ext *curr_ext;
-    struct ext *new_ext;
-    new_ext = (struct ext *)malloc(sizeof(struct ext));
-    if (new_ext == NULL)
-    {
-        MEMORY_FAIL;
-    }
-    new_ext->address_head = (struct address *)malloc(sizeof(struct address));
-    if (new_ext->address_head == NULL)
-    {
-        MEMORY_FAIL;
-    }
-
-    strcpy(new_ext->ext_name, symbol_name);
-    new_ext->address_head->address = address;
-    new_ext->next = NULL;
-    new_ext->prev = NULL;
-    if (program->ext_table == NULL)
-    {
-        program->ext_table = new_ext;
-    }
-    else
-    {
-        curr_ext = program->ext_table;
-        while (curr_ext->next != NULL)
-        {
-            curr_ext = curr_ext->next;
-        }
-        curr_ext->next = new_ext;
-        new_ext->prev = curr_ext;
-    }
-
-    program->exter_count++;
-}
 
 void set_first_word(struct ast line_ast, struct translation_unit *program)
 {
@@ -125,20 +54,6 @@ void set_first_word(struct ast line_ast, struct translation_unit *program)
         program->IC++;
 }
 
-struct ext *ext_search(struct ext *head, char *name)
-{
-    struct ext *current = head;
-    while (current != NULL)
-    {
-        if (strcmp(current->ext_name, name) == 0)
-        {
-            return current;
-        }
-        current = current->next;
-    }
-    return NULL;
-}
-
 int second_pass(char *file_name, FILE *am_file, struct translation_unit *program, struct hash *hash_table[])
 {
     char line[MAX_LINE];
@@ -154,7 +69,10 @@ int second_pass(char *file_name, FILE *am_file, struct translation_unit *program
     while (fgets(line, sizeof(line), am_file))
     {
         line_ast = parse_line(line, hash_table); /*parsing the line to an AST*/
-
+        if (line_ast.line_type_data.inst.inst_type == string)
+        {
+                free_string_array(line_ast.line_type_data.inst.string_array, line_ast.line_type_data.inst.data_counter);
+        }
         if (line_ast.line_type == command_line)
         {
             set_first_word(line_ast, program);
@@ -219,7 +137,6 @@ int second_pass(char *file_name, FILE *am_file, struct translation_unit *program
                         else
                         {
                             printf("Error in %s line %d: %s is undefined label \n", file_name, line_number, line_ast.line_type_data.command.opcode_type[i].labell[0]);
-
                             is_error = 1;
                         }
                     }
@@ -233,10 +150,6 @@ int second_pass(char *file_name, FILE *am_file, struct translation_unit *program
         line_number++;
     }
 
-    if (is_error)
-    {
-        free_translation_unit(program);
-    }
     return is_error;
 }
 
