@@ -112,6 +112,7 @@ void reset_ast(struct ast *node)
     i = 0;
     node->line_type = empty_line;
     node->line_type_data.inst.inst_type = 0;
+    
     reset_string_array(node->line_type_data.inst.label_array, 2);
     reset_string_array(node->line_type_data.inst.string_array, 50);
     node->line_type_data.command.opcode = 0;
@@ -125,13 +126,16 @@ void reset_ast(struct ast *node)
         node->line_type_data.command.opcode_type[i].numberr = 0;
         node->line_type_data.command.opcode_type[i].regg = 0;
     }
-
     memset(node->error.type, 0, sizeof(node->error.type));
     memset(node->label_name, 0, sizeof(node->label_name));
     node->line_type_data.inst.data_counter = 0;
     node->ARE.ARE_type = A;
     node->argument_count = 0;
 }
+
+
+
+
 
 /**
  * @brief Checks if the line is a command or an instruction.
