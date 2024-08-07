@@ -24,7 +24,6 @@
 #define COMMAND_TYPE line_ast.line_type_data.command.opcode_type[i].command_type
 #define SET_ADRESS program->code_array[program->IC] |= line_ast.line_type_data.command.opcode_type[i]
 #define FREE_AND_REMOVE   \
-    free(line_copy);      \
     free(as_file_name);   \
     free(am_file_name);   \
     remove(am_file_name); \
@@ -32,4 +31,11 @@
 #define STRCAT_MALLOC(dest, str1, str2)                      \
     (dest = (char *)malloc(strlen(str1) + strlen(str2) + 1), \
      strcpy(dest, str1), strcat(dest, str2))
+
+#define FREE_TRANSU_HASH_CLOSE      \
+    free_translation_unit(program); \
+    free(am_file_name);             \
+    free_hash(hash_table);          \
+    fclose(am_file);                \
+
 #endif
