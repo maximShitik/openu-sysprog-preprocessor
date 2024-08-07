@@ -350,7 +350,6 @@ struct ast parse_line(char *line, struct hash *hash_table[])
         error_found(&ast, "missing operand");
         return ast;
     }
-
     reset_ast(&ast);
     ast.argument_count = set_argument_amount(&ast, separated);
     line_type(separated, &ast);
