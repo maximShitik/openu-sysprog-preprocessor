@@ -33,7 +33,20 @@ void trim_whitespace(char *str)
 }
 
 
-
+/**
+ * @brief frees a string array.
+ * 
+ * @param array 
+ * @param size 
+ */
+void free_string_array(char **array, int size)
+{
+    int i;
+    for (i = 0; i < size; i++)
+    {
+        free(array[i]);
+    }
+}
 
 /**
  * Function to split a line into words based on spaces.
@@ -180,6 +193,7 @@ void reset_string_array(char **array, int size)
         array[i] = NULL;
     }
 }
+
 
 
 
