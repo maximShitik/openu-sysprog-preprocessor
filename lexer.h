@@ -11,7 +11,6 @@
 #define SPACES " \t\n , "
 #include "data_structs.h"
 
-
 struct sep_line
 {
     char *line[MAX_LINE];
@@ -126,7 +125,10 @@ typedef struct ast
 } ast;
 
 struct ast parse_line(char *line, struct hash *hash_table[]);
-struct ast one_group_command(struct ast *ast, struct sep_line sep, char *command);
 int operand_group(struct ast *ast, char *command);
-
+struct ast line_type(struct sep_line sep, struct ast *ast);
+void set_command(struct ast *ast, struct sep_line sep, char *command);
+void no_operands_command(struct ast *ast, struct sep_line sep, char *command);
+struct ast one_group_command(struct ast *ast, struct sep_line sep, char *command);
+struct ast two_group_command(struct ast *ast, struct sep_line sep, char *command, int group);
 #endif
