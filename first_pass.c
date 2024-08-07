@@ -4,119 +4,18 @@
 #include "first_pass.h"
 #include "data_structs.h"
 #include "lexer.h"
+#include "help_func.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-void add_entry(struct translation_unit *program, char *symbol_name, int address)
+int first_pass(char *file_name, FILE *am_file, struct translation_unit *program, struct hash *hash_table[], int original_line_numbers[], int expanded_line_count)
 {
-    struct entry *entry_symbol;
-    struct entry *current_entry;
-
-    entry_symbol = (struct entry *)malloc(sizeof(struct entry));
-    if (entry_symbol == NULL)
-    {
-        printf("Memory allocation error\n");
-        exit(EXIT_FAILURE);
-    }
-    strcpy(entry_symbol->entry_name, symbol_name);
-    entry_symbol->address = address;
-    entry_symbol->next = NULL;
-    entry_symbol->prev = NULL;
-
-    if (program->entry_table == NULL)
-    {
-        program->entry_table = entry_symbol;
-    }
-    else /*inserting the entry in the end of the list*/
-    {
-        current_entry = program->entry_table;
-        while (current_entry->next != NULL)
-        {
-            current_entry = current_entry->next;
-        }
-        current_entry->next = entry_symbol;
-        entry_symbol->prev = current_entry;
-    }
-    program->entry_count++;
-}
-void free_translation_unit(struct translation_unit *program)
-{
-    struct symbol *current_symbol;
-    struct symbol *next_symbol;
-    struct ext *current_ext;
-    struct ext *next_ext;
-    struct entry *current_entry;
-    struct entry *next_entry;
-    struct address *current_address;
-    struct address *next_address;
-    int i;
-
-    current_symbol = program->symbol_table;
-    while (current_symbol)
-    {
-        next_symbol = current_symbol->next;
-        free(current_symbol);
-        current_symbol = next_symbol;
-    }
-
-    current_ext = program->ext_table;
-    while (current_ext)
-    {
-        next_ext = current_ext->next;
-        current_address = current_ext->address_head;
-        while (current_address)
-        {
-            next_address = current_address->next_address;
-            free(current_address);
-            current_address = next_address;
-        }
-        free(current_ext);
-        current_ext = next_ext;
-    }
-    current_entry = program->entry_table;
-    while (current_entry)
-    {
-        next_entry = current_entry->next;
-        free(current_entry);
-        current_entry = next_entry;
-    }
-    free(current_entry);
-
-    for (i = 0; i < program->IC; i++)
-    {
-        program->code_array[i] = 0;
-        program->data_array[i] = 0;
-    }
-}
-
-struct symbol *symbol_search(struct symbol *head, char *name)
-{
-    struct symbol *current = head;
-    while (current != NULL)
-    {
-        if (strcmp(current->symbol_name, name) == 0)
-        {
-            return current;
-        }
-        current = current->next;
-    }
-    return NULL;
-}
-void symbol_insert(struct symbol **head, struct symbol *new_symbol)
-{
-    new_symbol->next = *head;
-    *head = new_symbol;
-}
-
-int first_pass(char *file_name, FILE *am_file, struct translation_unit *program, struct hash *hash_table[])
-{
-    
     struct symbol *current;
     int i;
     int is_error;
     char line[MAX_LINE];
-    int line_number;
+    int expanded_line_number;
     struct symbol *symbol_found;
     struct symbol *new_symbol;
     int ic, dc;
@@ -124,23 +23,31 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
     ic = 100, dc = 0;
     is_error = 0;
     i = 0;
+    expanded_line_number = 0;
 
     while (fgets(line, sizeof(line), am_file))
     {
         line_ast = parse_line(line, hash_table); /*parsing the line to an AST*/
         if (line_ast.line_type == error_line)
         {
-            printf("Syntex error in line %d: %s\n", line_number, line_ast.error.type);
-            is_error = 1; /*indicating there is an error in the syntex*/
-            line_number++;
+            if (expanded_line_number < expanded_line_count)
+            {
+                printf("Syntax error in line %d: %s\n", original_line_numbers[expanded_line_number], line_ast.error.type);
+            }
+            else
+            {
+                printf("Syntax error in line: %s\n", line_ast.error.type);
+            }
+            is_error = 1; /*indicating there is an error in the syntax*/
+            expanded_line_number++;
             continue;
         }
 
-        /*prosessing the label and checking if we have redefenition*/
+        /*processing the label and checking if we have redefinition*/
         if ((line_ast.label_name[0] != '\0') && (line_ast.line_type == inst_line || line_ast.line_type == command_line))
         {
             symbol_found = symbol_search(program->symbol_table, line_ast.label_name);
-            /*cheking if the name is in the label table*/
+            /*checking if the name is in the label table*/
             if (symbol_found)
             {
                 if (symbol_found->symbol_type == entry_type)
@@ -150,9 +57,16 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
                 }
                 else /*if the name is not entry and we already have it in the table */
                 {
-
-                    printf("Error in %s line %d: %s is already defined \n", file_name, line_number, line_ast.label_name);
+                    if (expanded_line_number < expanded_line_count)
+                    {
+                        printf("Error in %s line %d: %s is already defined \n", file_name, original_line_numbers[expanded_line_number], line_ast.label_name);
+                    }
+                    else
+                    {
+                        printf("Error in %s: %s is already defined \n", file_name, line_ast.label_name);
+                    }
                     is_error = 1;
+                    expanded_line_number++;
                     continue;
                 }
             }
@@ -174,7 +88,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
                 ic++;
             else
             {
-                /*counting the number of the arguments for the ic wihouth the label name and command*/
+                /*counting the number of the arguments for the ic without the label name and command*/
                 if (line_ast.label_name[0] != '\0')
                 {
                     ic += line_ast.argument_count - 2;
@@ -186,9 +100,8 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
             }
         }
 
-        else if (line_ast.line_type == inst_line) /*coding the instructions to the transletion unit */
+        else if (line_ast.line_type == inst_line) /*coding the instructions to the translation unit */
         {
-
             if (line_ast.line_type_data.inst.inst_type == data)
             {
                 memcpy(&program->data_array[program->DC], line_ast.line_type_data.inst.data_array, sizeof(int) * line_ast.line_type_data.inst.data_counter);
@@ -203,8 +116,8 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
                 }
                 dc += line_ast.line_type_data.inst.data_counter + 1;
                 program->DC = dc;
+                free_string_array(line_ast.line_type_data.inst.string_array, line_ast.line_type_data.inst.data_counter);
             }
-
             else if (line_ast.line_type_data.inst.inst_type == entry || line_ast.line_type_data.inst.inst_type == extrn)
             {
                 symbol_found = symbol_search(program->symbol_table, line_ast.line_type_data.inst.label_array[0]);
@@ -220,7 +133,14 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
                     }
                     else
                     {
-                        printf("Error in %s line %d: %s is already defined \n", file_name, line_number, line_ast.line_type_data.inst.label_array[0]);
+                        if (expanded_line_number < expanded_line_count)
+                        {
+                            printf("Error in %s line %d: %s is already defined \n", file_name, original_line_numbers[expanded_line_number], line_ast.line_type_data.inst.label_array[0]);
+                        }
+                        else
+                        {
+                            printf("Error in %s: %s is already defined \n", file_name, line_ast.line_type_data.inst.label_array[0]);
+                        }
                         is_error = 1;
                     }
                 }
@@ -231,21 +151,29 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
                     new_symbol->symbol_type = (line_ast.line_type_data.inst.inst_type == entry) ? entry_type : extrn_type;
                     symbol_insert(&program->symbol_table, new_symbol);
                 }
-                else /*if we dont have the symbol in the table and its not an entry its a redefenition*/
+                else /*if we don't have the symbol in the table and it's not an entry it's a redefinition*/
                 {
-                    printf("Error in %s line %d: %s is already defined \n", file_name, line_number, line_ast.line_type_data.inst.label_array[0]);
+                    if (expanded_line_number < expanded_line_count)
+                    {
+                        printf("Error in %s line %d: %s is already defined \n", file_name, original_line_numbers[expanded_line_number], line_ast.line_type_data.inst.label_array[0]);
+                    }
+                    else
+                    {
+                        printf("Error in %s: %s is already defined \n", file_name, line_ast.line_type_data.inst.label_array[0]);
+                    }
                     is_error = 1;
                 }
             }
         }
-        line_number++;
+        expanded_line_number++;
     }
+
     current = program->symbol_table;
     while (current != NULL)
     {
         if (current->symbol_type == entry_type && !is_error)
         {
-            printf("Error in %s line %d: %s\n", file_name, line_number, "label already defined as entry and never resived data");
+            printf("Error in %s: %s\n", file_name, "label already defined as entry and never received data");
             is_error = 1;
         }
         if (current->symbol_type == data_type || current->symbol_type == entry_data_type)
@@ -254,7 +182,6 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
         }
         if (current->symbol_type == entry_code_type || current->symbol_type == entry_data_type)
         {
-
             add_entry(program, current->symbol_name, current->address);
         }
         current = current->next;
@@ -262,7 +189,4 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
 
     return is_error;
 }
-
 #endif
-
-/*לבדוק איך השורות שאמורות להיות דיסי מקדמות את מספר השורות הקובץ פלט לפי הקובץ/מתחברות ל איסי. פוור פוינט*/
