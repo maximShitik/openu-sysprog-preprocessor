@@ -6,7 +6,6 @@
 #include <stdio.h>
 
 
-int first_pass(char *file_name, FILE *am_file, struct translation_unit *program, struct hash *hash_table[]);
+int first_pass(char *file_name, FILE *am_file, struct translation_unit *program, struct hash *hash_table[], int original_line_numbers[], int expanded_line_count);
 struct symbol *symbol_search(struct symbol *head, char *name);
-void free_translation_unit(struct translation_unit *program);
 #endif
