@@ -17,17 +17,15 @@ void print_object_file(char *file_name, struct translation_unit *program)
     int value;
     char *dot;
     int line_number = 100;
-
+    value = 0;
     object_file_name = (char *)malloc(strlen(file_name) + OB);
     if (object_file_name == NULL)
     {
         MEMORY_FAIL;
     }
-
     strcpy(object_file_name, file_name);
 
     dot = strrchr(object_file_name, '.');
-
     if (dot == NULL)
     {
         strcat(object_file_name, ".ob");
@@ -44,32 +42,13 @@ void print_object_file(char *file_name, struct translation_unit *program)
         free(object_file_name);
         exit(EXIT_FAILURE);
     }
-
+    fprintf(object_file, "  %d   %d\n", program->IC, program->DC);/*printing the 2 numberrs in the head*/
     for (i = 0; i < program->IC; i++)
     {
         fprintf(object_file, "%04d ", line_number);
 
         value = program->code_array[i];
-        if (value < 0)
-        {
-            value = (~(-value) + 1) & 0x7FFF; /* Convert negative to positive and mask */
-        }
-        else
-        {
-            value = value & 0x7FFF; /* Make it in the 15-bit format */
-        }
-        for (j = 4; j >= 0; j--)
-        {
-            fprintf(object_file, "%d", octal_base[(value >> (3 * j)) & (j == 4 ? 0x7F : 0x7)]);
-        }
-        fprintf(object_file, "\n");
-        line_number++;
-    }
-    for (i = 0; i < program->DC; i++)
-    {
-        fprintf(object_file, "%04d ", line_number);
 
-        value = program->data_array[i];
         if (value < 0)
         {
             value = (~(-value) + 1) & 0x7FFF;
@@ -78,6 +57,30 @@ void print_object_file(char *file_name, struct translation_unit *program)
         {
             value = value & 0x7FFF;
         }
+
+        for (j = 4; j >= 0; j--)
+        {
+            fprintf(object_file, "%d", octal_base[(value >> (3 * j)) & (j == 4 ? 0x7F : 0x7)]);
+        }
+        fprintf(object_file, "\n");
+        line_number++;
+    }
+
+    for (i = 0; i < program->DC; i++)
+    {
+        fprintf(object_file, "%04d ", line_number);
+
+        value = program->data_array[i];
+
+        if (value < 0)
+        {
+            value = (~(-value) + 1) & 0x7FFF;
+        }
+        else
+        {
+            value = value & 0x7FFF;
+        }
+
         for (j = 4; j >= 0; j--)
         {
             fprintf(object_file, "%d", octal_base[(value >> (3 * j)) & (j == 4 ? 0x7F : 0x7)]);
@@ -130,8 +133,12 @@ void print_ext_file(char *file_name, struct translation_unit *program)
         free(ext_file_name);
         exit(EXIT_FAILURE);
     }
-
-    current_ext = program->ext_table;
+    if (strcmp(program->ext_table->ext_name, "\0") == 0)
+    {
+        current_ext = program->ext_table->next;
+    }
+    else
+        current_ext = program->ext_table;
 
     while (current_ext != NULL)
     {
