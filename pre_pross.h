@@ -14,8 +14,6 @@ enum
 };
 
 int line_defenition(char *line, struct sep_line separated, char error[MAX_LINE]);
-char *pre_prossesor(char *line, hash *hash_table[], char *input);
-
-
+char *pre_prossesor(char *line, hash *hash_table[], char *input,int original_line_numbers[], int *expanded_line_count);
 
 #endif
