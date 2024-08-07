@@ -9,6 +9,12 @@
 #include "help_func.h"
 #include "macros.h"
 
+void handle_error(int expanded_line_number, int original_line_numbers[])
+{
+    int original_line_number = original_line_numbers[expanded_line_number];
+    printf("Error in expanded file at line %d (original line %d)\n", expanded_line_number + 1, original_line_number);
+}
+
 int line_defenition(char *line, struct sep_line separated, char error[MAX_LINE])
 {
     if (strcmp(separated.line[0], "macr") == 0)
@@ -55,7 +61,7 @@ int line_defenition(char *line, struct sep_line separated, char error[MAX_LINE])
     }
 }
 
-char *pre_prossesor(char *line, hash *hash_table[], char *input)
+char *pre_prossesor(char *line, hash *hash_table[], char *input, int original_line_numbers[], int *expanded_line_count)
 {
     int index_copy;
     int line_number;
@@ -76,6 +82,7 @@ char *pre_prossesor(char *line, hash *hash_table[], char *input)
     indicator = first_int;
     index_copy = 0;
     line_number = 0;
+    *expanded_line_count = 0;
 
     as_file_name = STRCAT_MALLOC(as_file_name, input, ".as");
     am_file_name = STRCAT_MALLOC(am_file_name, input, ".am");
@@ -87,7 +94,6 @@ char *pre_prossesor(char *line, hash *hash_table[], char *input)
         remove(am_file_name);
         free(as_file_name);
         free(am_file_name);
-
         return NULL;
     }
 
@@ -102,7 +108,10 @@ char *pre_prossesor(char *line, hash *hash_table[], char *input)
             error_flag = 1;
         }
         if (line[0] == '\0' || line[0] == ';')
+        {
+            free(line_copy);
             continue;
+        }
         strcpy(line_copy, line);
 
         separated = next_word(line);
@@ -143,6 +152,8 @@ char *pre_prossesor(char *line, hash *hash_table[], char *input)
                     while (current_line != NULL)
                     {
                         fprintf(am_file, "%s\n", current_line->line_data);
+                        original_line_numbers[*expanded_line_count] = line_number;
+                        (*expanded_line_count)++;
                         current_line = current_line->next;
                     }
                     fflush(am_file);
@@ -151,10 +162,13 @@ char *pre_prossesor(char *line, hash *hash_table[], char *input)
                 else
                 {
                     fprintf(am_file, "%s\n", line_copy);
+                    original_line_numbers[*expanded_line_count] = line_number;
+                    (*expanded_line_count)++;
                     fflush(am_file);
                 }
             }
         }
+        free(line_copy);
     }
     if (error_flag)
     {
@@ -163,7 +177,6 @@ char *pre_prossesor(char *line, hash *hash_table[], char *input)
     }
     else
     {
-        free(line_copy);
         free(as_file_name);
         fclose(as_file);
         fclose(am_file);
