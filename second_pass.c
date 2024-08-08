@@ -4,7 +4,6 @@
 #include "lexer.h"
 #include "first_pass.h"
 #include "help_func.h"
-#include "second_pass.h"
 #include "macros.h"
 
 void set_first_word(struct ast line_ast, struct translation_unit *program)
