@@ -2,7 +2,7 @@
 #define SECOND_PASS_C
 #include "data_structs.h"
 #include "lexer.h"
-#include "first_pass.h"
+#include "first_and_second_pass.h"
 #include "help_func.h"
 #include "macros.h"
 
@@ -53,24 +53,27 @@ void set_first_word(struct ast line_ast, struct translation_unit *program)
         program->IC++;
 }
 
-int second_pass(char *file_name, FILE *am_file, struct translation_unit *program, struct hash *hash_table[])
+int second_pass(char *file_name, FILE *am_file, struct translation_unit *program, struct hash *hash_table[], line_mapping line_map[], int expanded_line_count)
 {
     char line[MAX_LINE];
     int is_error;
-    int line_number;
     struct ast line_ast = {0};
-    struct symbol *symbol_found;
     struct ext *ext_found;
     int i;
-    line_number = 0;
+    int expanded_line_number;
+    int original_line_number;
     is_error = 0;
+    expanded_line_number = 0;
 
-    while (fgets(line, sizeof(line), am_file))
+        while (fgets(line, sizeof(line), am_file))
     {
+        original_line_number = line_map[expanded_line_number].original_line_number;
+
         line_ast = parse_line(line, hash_table); /*parsing the line to an AST*/
-        if (line_ast.line_type_data.inst.inst_type == string)
+
+        if (line_ast.line_type_data.inst.inst_type == string) /*free memory if we have a string */
         {
-                free_string_array(line_ast.line_type_data.inst.string_array, line_ast.line_type_data.inst.data_counter);
+            free_string_array(line_ast.line_type_data.inst.string_array, line_ast.line_type_data.inst.data_counter);
         }
         if (line_ast.line_type == command_line)
         {
@@ -86,7 +89,6 @@ int second_pass(char *file_name, FILE *am_file, struct translation_unit *program
             }
             else
             {
-
                 for (i = 0; i < 2; i++)
                 {
                     if (COMMAND_TYPE == number)
@@ -109,22 +111,20 @@ int second_pass(char *file_name, FILE *am_file, struct translation_unit *program
                     }
                     else if (COMMAND_TYPE == label)
                     {
-                        symbol_found = symbol_search(program->symbol_table, line_ast.line_type_data.command.opcode_type[i].labell[0]);
+                        struct symbol *symbol_found = symbol_search(program->symbol_table, line_ast.line_type_data.command.opcode_type[i].labell[0]);
                         if (symbol_found)
                         {
                             program->code_array[program->IC] = symbol_found->address << 3;
                             if (symbol_found->symbol_type == extrn_type)
                             {
                                 program->code_array[program->IC] |= 1; /*adding the E*/
-                                ext_found = ext_search(program->ext_table, line_ast.line_type_data.command.opcode_type[i].labell[0]);
+                               ext_found = ext_search(program->ext_table, line_ast.line_type_data.command.opcode_type[i].labell[0]);
                                 if (ext_found)
                                 {
-
                                     add_address(program, ext_found, program->IC + 100);
                                 }
                                 else
                                 {
-
                                     add_extr(program, line_ast.line_type_data.command.opcode_type[i].labell[0], program->IC + 100);
                                 }
                             }
@@ -135,7 +135,7 @@ int second_pass(char *file_name, FILE *am_file, struct translation_unit *program
                         }
                         else
                         {
-                            printf("Error in %s line %d: %s is undefined label \n", file_name, line_number, line_ast.line_type_data.command.opcode_type[i].labell[0]);
+                            printf("Error in line %d: %s is undefined label \n", original_line_number, line_ast.line_type_data.command.opcode_type[i].labell[0]);
                             is_error = 1;
                         }
                     }
@@ -146,7 +146,7 @@ int second_pass(char *file_name, FILE *am_file, struct translation_unit *program
                 }
             }
         }
-        line_number++;
+        expanded_line_number++;
     }
 
     return is_error;
