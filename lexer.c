@@ -1,15 +1,5 @@
 #ifndef LEXER_C
 #define LEXER_C
-/*
-This file is taking a line from the input file and parsing it to an AST node.
-The AST node is then returned.
-The file prosses the line and checks :
-1) What is the line type (instruction, command, label, error line)
-2) If the line is a label, it sets the label name and the next line type (instruction or command).
-3) If the line is a command, it sets the command name and the operands by checking the command group by number of operands.
-4) If the line is an instruction, it sets the instruction name and the operands.
-5) If the line is an error line, it sets the error message and returns an eampty AST node with the error messege only.
-*/
 
 #include "lexer.h"
 #include <stdio.h>
@@ -20,229 +10,140 @@ The file prosses the line and checks :
 #include "lexer_func.h"
 #include "lexer_func.c"
 #include "data_structs.h"
+#include "macros.h"
+extern void set_instruction(struct ast *ast, struct sep_line sep);
+extern int set_argument_amount(struct ast *ast, struct sep_line sep);
+extern int system_names(char *line);
 
-/**
- * @brief cheking to witch group of operand the command belongs
- *
- * @param ast
- * @param command
- * @return int
- */
 int operand_group(struct ast *ast, char *command)
 {
-    if (strcmp(command, "mov") == 0 || strcmp(command, "cmp") == 0 ||
-        strcmp(command, "add") == 0 || strcmp(command, "sub") == 0 ||
-        strcmp(command, "lea") == 0)
+    int commandsCount;
+    int i;
+    opcode_map commands[] = OP_CODE_ARRAY;
+
+    commandsCount = 16;
+
+    for (i = 0; i < commandsCount; i++)
     {
-        return 2;
+        if (strcmp(command, commands[i].name) == 0)
+        {
+            if (i < ONE_OPCODES_COUNT)
+                return two_group;
+            else if (i < TWO_OPCODES_COUNT)
+                return one_group;
+            else
+                return no_operands;
+        }
     }
-    if (strcmp(command, "clr") == 0 || strcmp(command, "not") == 0 ||
-        strcmp(command, "inc") == 0 || strcmp(command, "dec") == 0 ||
-        strcmp(command, "jmp") == 0 || strcmp(command, "bne") == 0 ||
-        strcmp(command, "red") == 0 || strcmp(command, "prn") == 0 ||
-        strcmp(command, "jsr") == 0)
-        return 1;
-    if (strcmp(command, "rts") == 0 || strcmp(command, "stop") == 0)
-        return 0;
-    else
-        error_found(ast, "error-undefinded command");
-    return -1;
+    error_found(ast, "undefinded command");
+    return error;
 }
 
-/**
- * @brief
- *
- * @param ast
- * @param sep
- * @param command
- * @param group
- * @return struct ast
- */
-struct ast two_group_command(struct ast *ast, struct sep_line sep,
-                             char *command, int group)
+struct ast process_command_operands(struct ast *ast, struct sep_line sep, char *command, int group_count)
 {
+    int current = 0;
+    set_command_name(ast, command);
 
-    int current;
-    current = 0;
-    if (strcmp(sep.line[1], ",") == 0)
-    {
-        error_found(ast, "error-extra comma");
-        return *ast;
-    }
-
-    while (strcmp(sep.line[current], command) != 0)
+    while (strcmp(sep.line[current], command) != 0) /*finding the command*/
     {
         current++;
     }
-    if (sep.line[++current] == NULL)
+    current++;
+    /*chekinng if the next opernd is null*/
+    if (sep.line[current] == NULL)
     {
-        error_found(ast, "error-missing operand");
+        error_found(ast, "missing operand");
         return *ast;
     }
 
-    if (strcmp(command, "lea") == 0)
-        if (system_names(sep.line[current]) != TRUE || is_int(sep.line[current], ast))
+    /*processing the first operand*/
+    if (system_names(sep.line[current]) == LABEL && !is_int(sep.line[current], ast))
+    {
+        set_label(ast, sep, current);
+    }
+    else if (system_names(sep.line[current]) == registerr)
+    {
+        if (group_count == 2)
         {
-            error_found(ast, "error-invalid operand");
+            SET_REGISTER(FIRST_WORD);
+        }
+        else if (group_count == 1)
+        {
+            SET_REGISTER(SECOND_WORD);
+        }
+        if (JMP_BNE_JSR && ast->line_type_data.command.opcode_type[SECOND_WORD].command_type == reg_direct)
+        {
+            error_found(ast, "invalid operand, command can't receive registers");
             return *ast;
         }
-    if (system_names(sep.line[current]) == TRUE)
-        set_label(ast, sep, current);
-    if (is_int(sep.line[current], ast))
-    {
-        set_data(ast, sep);
     }
-    if (system_names(sep.line[current]) == registerr)
+    else if (is_int(sep.line[current], ast))
     {
-        ast->line_type_data.command.opcode_type[0].command_type = reg_direct;
-        if (strpbrk(sep.line[current], "*") == NULL)
+        if (group_count == 2 || strcmp(command, "prn") == 0)
         {
-            ast->line_type_data.command.opcode_type[0].regg =
-                atoi(sep.line[current] + 1);
+            set_data(ast, sep, 1);
         }
         else
         {
-            ast->line_type_data.command.opcode_type[0].regg =
-                atoi(sep.line[current] + 2);
-            ast->line_type_data.command.opcode_type[0].command_type = reg;
+            error_found(ast, "invalid operand, only prn can receive numbers");
+            return *ast;
         }
     }
+    if (strcmp(command, "lea") == 0 && (system_names(sep.line[current]) != LABEL || is_int(sep.line[current], ast)))
+    {
+        error_found(ast, "-invalid operand");
+        return *ast;
+    }
 
-    if (sep.line[++current] == NULL)
+    if (group_count == 1)
     {
-        error_found(ast, "error-missing operand");
+        if (sep.line[current + 1] != NULL)
+        {
+            error_found(ast, "too many operands");
+        }
         return *ast;
     }
-    if (strcmp(sep.line[current], ",") != 0)
+
+    /*process the second operand*/
+    if (sep.line[++current] == NULL || strcmp(sep.line[current], ",") != 0)
     {
-        error_found(ast, "error-missing comma");
+        error_found(ast, sep.line[current] == NULL ? "missing operand" : "error-missing comma");
         return *ast;
     }
+
     current++;
-    if (sep.line[current] == NULL)
-    {
-        error_found(ast, "error-missing operand");
-        return *ast;
-    }
 
     if (sep.line[++current] != NULL)
     {
-        error_found(ast, "error-too many operands");
+        error_found(ast, "too many operands");
         return *ast;
     }
     current--;
 
     if (is_int(sep.line[current], ast))
     {
-        set_data(ast, sep);
         if (strcmp(command, "cmp") != 0)
         {
-            error_found(ast, "error-invalid operand,command cant receive numbers");
+            error_found(ast, "invalid operand, command can't receive numbers");
             return *ast;
-        }
-    }
-    if (system_names(sep.line[current]) == registerr)
-    {
-        ast->line_type_data.command.opcode_type[1].command_type = reg_direct;
-        if (strpbrk(sep.line[current], "*") == NULL)
-        {
-            ast->line_type_data.command.opcode_type[1].regg =
-                atoi(sep.line[current] + 1);
         }
         else
         {
-            ast->line_type_data.command.opcode_type[1].regg = atoi(sep.line[current] + 2);
-            ast->line_type_data.command.opcode_type[1].command_type = reg;
+            set_data(ast, sep, 0);
         }
     }
-    else if (system_names(sep.line[current]) == TRUE && !is_int(sep.line[current], ast))
+    else if (system_names(sep.line[current]) == registerr)
+    {
+        SET_REGISTER(SECOND_WORD);
+    }
+    else if (system_names(sep.line[current]) == LABEL && !is_int(sep.line[current], ast))
     {
         set_label(ast, sep, current);
     }
-    set_command_name(ast, command);
+
     return *ast;
 }
 
-/**
- * @brief operating the one group command
- *
- * @param ast
- * @param sep
- * @param command
- * @return struct ast
- */
-struct ast one_group_command(struct ast *ast, struct sep_line sep,
-                             char *command)
-{
-
-    int current;
-    current = 0;
-
-    if (strcmp(command, "not") == 0)
-        ast->line_type_data.command.opcode = nt;
-    else
-        set_command_name(ast, command);
-    while (strcmp(sep.line[current], command) != 0)
-    {
-        current++;
-    }
-    current++;
-    if (system_names(sep.line[current]) == TRUE && !is_int(sep.line[current], ast))
-    {
-        ast->line_type_data.command.opcode_type[1].command_type = label;
-        ast->line_type_data.command.opcode_type[1].labell[0] = sep.line[current];
-    }
-    if (system_names(sep.line[current]) == registerr)
-    {
-        if (strpbrk(sep.line[current], "*") &&
-            (strcmp(command, "jmp") == 0 || strcmp(command, "bne") == 0))
-        {
-            error_found(ast, "error-invalid operand,register must be indirect");
-            return *ast;
-        }
-        else
-        {
-            ast->line_type_data.command.opcode_type[SECOND_WORD].command_type = reg_direct;
-            if (strpbrk(sep.line[current], "*") == NULL)
-            {
-                ast->line_type_data.command.opcode_type[SECOND_WORD].regg =
-                    atoi(sep.line[current] + 1);
-            }
-            else
-            {
-                ast->line_type_data.command.opcode_type[SECOND_WORD].regg =
-                    atoi(sep.line[current] + 2);
-                ast->line_type_data.command.opcode_type[SECOND_WORD].command_type = reg;
-            }
-        }
-    }
-    if (strcmp(command, "jmp") != 0 || strcmp(command, "bne") != 0)
-    {
-        if (is_int(sep.line[current], ast))
-        {
-            if (strcmp(command, "prn") == 0)
-            {
-                set_data(ast, sep);
-            }
-            else
-            {
-                error_found(ast, "error-invalid operand,only prn can receive numbers");
-                return *ast;
-            }
-        }
-
-        if (sep.line[current + 1] != NULL)
-        {
-            error_found(ast, "error-too many operands");
-            return *ast;
-        }
-
-        return *ast;
-    }
-    else
-        error_found(ast, "error-invalid operand");
-    return *ast;
-}
 void no_operands_command(struct ast *ast, struct sep_line sep, char *command)
 {
     int current;
@@ -253,105 +154,88 @@ void no_operands_command(struct ast *ast, struct sep_line sep, char *command)
     }
     if (sep.line[current + 1] != NULL)
     {
-        error_found(ast, "error-too many operands");
+        error_found(ast, "too many operands");
         return;
     }
     set_command_name(ast, command);
     return;
 }
 
-/**
- * @brief Set the command object
- *
- * @param ast
- * @param sep
- * @param command
- */
 void set_command(struct ast *ast, struct sep_line sep, char *command)
 {
     int result;
     result = operand_group(ast, command);
-    if (result == 2)
+    if (result == 2 || result == 1)
     {
-        two_group_command(ast, sep, command, result);
+        process_command_operands(ast, sep, command, result);
     }
-    else if (result == 1)
-    {
-        one_group_command(ast, sep, command);
-    }
+
     else if (result == 0)
     {
         no_operands_command(ast, sep, command);
     }
 }
 
-/**
- * @brief Check the line type by the inserted line
- *
- * @param sep
- * @param ast
- * @return struct ast
- */
 struct ast line_type(struct sep_line sep, struct ast *ast)
 {
 
-    if (process_token(sep.line[0], ast) == instruction)
+    if (process_token(sep.line[FIRST_WORD], ast) == lable) /*checking if we  have label in the line*/
+    {
+
+        if (process_token(sep.line[SECOND_WORD], ast) == instruction)
+        {
+            ast->line_type = inst_line;
+            set_label(ast, sep, FIRST_WORD);
+            set_instruction(ast, sep);
+            return *ast;
+        }
+        else if (process_token(sep.line[SECOND_WORD], ast) == command)
+        {
+            ast->line_type = command_line;
+            set_label(ast, sep, FIRST_WORD);
+            set_command(ast, sep, sep.line[SECOND_WORD]);
+
+            return *ast;
+        }
+    }
+
+    /*if we dont have label*/
+    else if (process_token(sep.line[FIRST_WORD], ast) == command)
+    {
+        ast->line_type = command_line;
+        set_command(ast, sep, sep.line[FIRST_WORD]);
+        return *ast;
+    }
+    else if (process_token(sep.line[FIRST_WORD], ast) == instruction)
     {
         ast->line_type = inst_line;
         set_instruction(ast, sep);
         return *ast;
     }
-    if (process_token(sep.line[0], ast) == lable)
-    {
-
-        if (process_token(sep.line[1], ast) == instruction)
-        {
-            ast->line_type = inst_line;
-            set_label(ast, sep, 0);
-            set_instruction(ast, sep);
-            return *ast;
-        }
-        else if (process_token(sep.line[1], ast) == command)
-        {
-            ast->line_type = command_line;
-            set_label(ast, sep, 0);
-            set_command(ast, sep, sep.line[1]);
-
-            return *ast;
-        }
-    }
-    else if (process_token(sep.line[0], ast) == command)
-    {
-        ast->line_type = command_line;
-        set_command(ast, sep, sep.line[0]);
-        return *ast;
-    }
     else if (ast->line_type != error_line)
     {
-        error_found(ast, "error-undefinded line type");
+        error_found(ast, "undefinded line type");
         return *ast;
     }
     return *ast;
 }
 
-/**
- * @brief parese the line and return the AST node
- *
- * @param line
- * @return struct ast
- */
 struct ast parse_line(char *line, struct hash *hash_table[])
 {
     struct ast ast;
-    struct sep_line separated = next_word(line);
+    struct sep_line separated = split_line(line);
     /*checking if we dont have enough operands*/
-    if (separated.line_number == 1 && (strcmp(separated.line[0], "stop") != 0 || strcmp(separated.line[0], "rts") != 0))
+    if (separated.line_number == 1)
     {
-        error_found(&ast, "missing operand");
-        return ast;
+        trim_whitespace(separated.line[0]);
+        if (strcmp(separated.line[0], "stop") != 0 && strcmp(separated.line[0], "rts") != 0)
+        {
+            error_found(&ast, "missing operand");
+            return ast;
+        }
     }
     reset_ast(&ast);
-    ast.argument_count = set_argument_amount(&ast, separated);
+    ast.argument_count = set_argument_amount(&ast, separated); /*setting the amount of words in the line*/
     line_type(separated, &ast);
     if (ast.label_name[0] != '\0' && search_in_hash(ast.label_name, hash_table) != NULL)
     {
