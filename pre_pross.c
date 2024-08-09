@@ -9,12 +9,6 @@
 #include "help_func.h"
 #include "macros.h"
 
-void handle_error(int expanded_line_number, int original_line_numbers[])
-{
-    int original_line_number = original_line_numbers[expanded_line_number];
-    printf("Error in expanded file at line %d (original line %d)\n", expanded_line_number + 1, original_line_number);
-}
-
 int line_defenition(char *line, struct sep_line separated, char error[MAX_LINE])
 {
     if (strcmp(separated.line[0], "macr") == 0)
@@ -61,65 +55,112 @@ int line_defenition(char *line, struct sep_line separated, char error[MAX_LINE])
     }
 }
 
-char *pre_prossesor(char *line, hash *hash_table[], char *input, int original_line_numbers[], int *expanded_line_count)
+int copy_file(const char *source_file, const char *target_file)
 {
-    int index_copy;
-    int line_number;
-    hash *macro_found;
-    int indicator; /*if indicator is macro_defenition its will define the lines as macros till the indicator is regular*/
-    int name_index;
-    struct sep_line separated;
-    char *line_copy;
-    FILE *am_file;
-    FILE *as_file;
-    char *as_file_name;
-    char *am_file_name;
-    char error[MAX_LINE];
-    line_node *current_line;
-    int error_flag;
-    error_flag = 0;
-    name_index = 0;
-    indicator = first_int;
-    index_copy = 0;
-    line_number = 0;
-    *expanded_line_count = 0;
+    char buffer[MAX_LINE];
+    size_t bytes;
+    FILE *dst;
+    FILE *src;
+    src = fopen(source_file, "rb");
+    dst = fopen(target_file, "wb");
 
-    as_file_name = STRCAT_MALLOC(as_file_name, input, ".as");
-    am_file_name = STRCAT_MALLOC(am_file_name, input, ".am");
-    as_file = fopen(input, "r");
-    am_file = fopen(am_file_name, "w");
-    if (as_file_name == NULL || am_file_name == NULL || am_file == NULL || as_file == NULL)
+    if (src == NULL || dst == NULL)
     {
-        printf("Error opening files\n");
-        remove(am_file_name);
-        free(as_file_name);
-        free(am_file_name);
-        return NULL;
+        perror("Error opening file");
+        if (src)
+            fclose(src);
+        if (dst)
+            fclose(dst);
+        return -1;
     }
 
-    while (fgets(line, MAX_LINE, as_file) != NULL)
+    while ((bytes = fread(buffer, 1, sizeof(buffer), src)) > 0)
     {
-        line_number++;
+        fwrite(buffer, 1, bytes, dst);
+    }
+
+    fclose(src);
+    fclose(dst);
+
+    return 0;
+}
+
+void create_as_and_am_files(char *input, char **as_file_name, char **am_file_name, FILE **am_file, FILE **as_file)
+{
+    /*adding the extensions*/
+    *as_file_name = STRCAT_AND_MALLOC(*as_file_name, input, ".as");
+    *am_file_name = STRCAT_AND_MALLOC(*am_file_name, input, ".am");
+
+    /*making a copy of the original file to run on */
+    if (copy_file(input, *as_file_name) != 0)
+    {
+        free(*as_file_name);
+        free(*am_file_name);
+        *am_file = NULL;
+        *as_file = NULL;
+        return;
+    }
+
+    *am_file = fopen(*am_file_name, "w");
+    *as_file = fopen(*as_file_name, "r");
+
+    if (*am_file == NULL || *as_file == NULL)
+    {
+        printf("Error opening files\n");
+        if (*am_file != NULL)
+            fclose(*am_file);
+        if (*as_file != NULL)
+            fclose(*as_file);
+        free(*as_file_name);
+        free(*am_file_name);
+        *am_file = NULL;
+        *as_file = NULL;
+        exit(EXIT_FAILURE);
+    }
+}
+
+char *pre_prossesor(char *line, hash *hash_table[], char *input, line_mapping line_map[], int *expanded_line_count)
+{
+    int index_copy, indicator, name_index, expanded_line_number, original_line_number, error_flag;
+    char *line_copy, *as_file_name, *am_file_name, error[MAX_ADDRESS];
+    hash *macro_found;
+    struct sep_line separated;
+    FILE *am_file, *as_file;
+    line_node *current_line;
+    expanded_line_number = 0;
+    original_line_number = 0;
+    *expanded_line_count = 0;
+    error_flag = 0;
+    name_index = 0;
+    index_copy = 0;
+    indicator = first_int; /*initilizing it to somthing so it wont be NULL*/
+
+    create_as_and_am_files(input, &as_file_name, &am_file_name, &am_file, &as_file);
+
+    while (fgets(line, MAX_ADDRESS, as_file) != NULL)
+    {
+        original_line_number++;
         trim_whitespace(line);
         line_copy = malloc(strlen(line) + 1);
-        if (line_copy == NULL)
-        {
-            printf("Memory allocation error");
-            error_flag = 1;
-        }
-        if (line[0] == '\0' || line[0] == ';')
+        if (line[0] == '\0' || line[0] == ';') /*skipping note and empty lines*/
         {
             free(line_copy);
             continue;
         }
-        strcpy(line_copy, line);
 
-        separated = next_word(line);
+        if (line_copy == NULL)
+        {
+            MEMORY_FAIL;
+            error_flag = 1;
+        }
+
+        strcpy(line_copy, line); /*copying the line so we can use it in the hash*/
+        separated = split_line(line);
         name_index = line_defenition(line_copy, separated, error);
 
         if (name_index == Error)
         {
-            printf("Error in pre-prossesor: %s in line %d \n", error, line_number);
+            printf("Error in pre-prossesor: %s in line %d \n", error, original_line_number);
             error_flag = 1;
         }
         else if (name_index >= min_hash_index)
@@ -152,8 +193,7 @@ char *pre_prossesor(char *line, hash *hash_table[], char *input, int original_li
                     while (current_line != NULL)
                     {
                         fprintf(am_file, "%s\n", current_line->line_data);
-                        original_line_numbers[*expanded_line_count] = line_number;
-                        (*expanded_line_count)++;
+                        CALCULATE_LINE_OFFSET
                         current_line = current_line->next;
                     }
                     fflush(am_file);
@@ -161,13 +201,13 @@ char *pre_prossesor(char *line, hash *hash_table[], char *input, int original_li
                 /*add the line to the as file*/
                 else
                 {
+                    CALCULATE_LINE_OFFSET
                     fprintf(am_file, "%s\n", line_copy);
-                    original_line_numbers[*expanded_line_count] = line_number;
-                    (*expanded_line_count)++;
                     fflush(am_file);
                 }
             }
         }
+        *expanded_line_count = expanded_line_number;
         free(line_copy);
     }
     if (error_flag)
