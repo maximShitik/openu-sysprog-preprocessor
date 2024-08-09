@@ -9,6 +9,7 @@
 #include "macros.h"
 
 void print_object_file(char *file_name, struct translation_unit *program)
+
 {
     int octal_base[] = {0, 1, 2, 3, 4, 5, 6, 7};
     FILE *object_file;
