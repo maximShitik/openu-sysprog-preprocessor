@@ -1,134 +1,79 @@
 #ifndef LEXER_H
 #define LEXER_H
-#define MAX_LINE 81
-#define FIRST_WORD 0
-#define SECOND_WORD 1
-#define THIRD_WORD 2
-#define MAX_LABEL 32
-#define MAX_DATA 300
-#define FALSE 0
-#define TRUE 1
-#define SPACES " \t\n , "
+#include "macros.h"
 #include "data_structs.h"
 
-struct sep_line
-{
-    char *line[MAX_LINE];
-    int line_number;
-};
+/*
+This file is taking a line from the input file and parsing it to an AST node.
+The AST node is then returned.
+The file prosses the line and checks :
+1) What is the line type (instruction, command, label, error line)
+2) If the line is a label, it sets the label name and the next line type (instruction or command).
+3) If the line is a command, it sets the command name and the operands by checking the command group by number of operands.
+4) If the line is an instruction, it sets the instruction name and the operands.
+5) If the line is an error line, it sets the error message and returns an eampty AST node with the error messege only.
+*/
 
-typedef enum return_types
-{
-    error = 1,
-    instruction,
-    command,
-    registerr,
-    Entry,
-    Extrn
 
-} return_types;
 
-typedef struct ast
-{
-
-    enum line_type
-    {
-
-        error_line = 1,
-        inst_line,
-        command_line,
-        empty_line
-
-    } line_type;
-
-    union line_type_data
-    {
-
-        struct inst
-        {
-            enum inst_type
-            {
-                lable = 1,
-                string,
-                entry,
-                extrn,
-                data
-            } inst_type;
-
-            char *label_array[2]; /*entry/extern*/
-            int data_array[80];
-            char *string_array[50];
-            int data_counter;
-
-        } inst;
-
-        struct command
-        {
-            enum
-            {
-                mov = 0,
-                cmp,
-                add,
-                sub,
-                lea,
-                clr,
-                nt,
-                inc,
-                dec,
-                jmp,
-                bne,
-                red,
-                prn,
-                jsr,
-                rts,
-                stop
-            } opcode;
-
-            struct
-            {
-                enum
-                {
-                    none,
-                    number,
-                    label,
-                    reg,
-                    reg_direct
-                } command_type;
-
-                char *labell[2];
-                int numberr;
-                int regg;
-
-            } opcode_type[2];
-
-        } command;
-
-    } line_type_data;
-    struct
-    {
-        char type[MAX_DATA];
-
-    } error;
-    struct
-    {
-        enum
-        {
-            E,
-            R,
-            A
-        } ARE_type;
-    } ARE;
-
-    char label_name[MAX_LABEL];
-    int argument_count;
-
-} ast;
-
+/**
+ * @brief parese the line and return the AST node
+ *
+ * @param line
+ * @return struct ast
+ */
 struct ast parse_line(char *line, struct hash *hash_table[]);
+
+
+/**
+ * @brief A for loop checking the command name in the op code map
+ *
+ * @param ast
+ * @param command
+ * @return int
+ */
 int operand_group(struct ast *ast, char *command);
-struct ast line_type(struct sep_line sep, struct ast *ast);
-void set_command(struct ast *ast, struct sep_line sep, char *command);
+
+/**
+ * @brief Resives from the "set_command" function the number of parameters the opcode expects to get.
+ * prossesing the line and setting the AST wuth the right operands.
+ * searching lexical errors.
+ * 
+ * @param ast 
+ * @param sep 
+ * @param command 
+ * @param group_count 
+ * @return struct ast 
+ */
+struct ast process_command_operands(struct ast *ast, struct sep_line sep, char *command, int group_count);
+
+/**
+ * @brief setting the command name in the AST and searching for lexical error.
+ * 
+ * @param ast 
+ * @param sep 
+ * @param command 
+ */
 void no_operands_command(struct ast *ast, struct sep_line sep, char *command);
-struct ast one_group_command(struct ast *ast, struct sep_line sep, char *command);
-struct ast two_group_command(struct ast *ast, struct sep_line sep, char *command, int group);
+
+/**
+ * @brief Resives from the "operand_group" function the number of parameters the opcode expects to get.
+ * setting to the right function with the number of operands
+ *
+ * @param ast
+ * @param sep
+ * @param command
+ */
+void set_command(struct ast *ast, struct sep_line sep, char *command);
+
+
+
+/**
+ * @brief Check the line type by the inserted line and setting the AST node
+ *
+ * @param sep
+ * @param ast
+ * @return struct ast
+ */
+struct ast line_type(struct sep_line sep, struct ast *ast);
 #endif
