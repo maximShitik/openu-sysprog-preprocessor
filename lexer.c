@@ -10,6 +10,7 @@
 #include "lexer_func.h"
 #include "lexer_func.c"
 #include "data_structs.h"
+#include "data_struct_functions.h"
 #include "macros.h"
 extern void set_instruction(struct ast *ast, struct sep_line sep);
 extern int set_argument_amount(struct ast *ast, struct sep_line sep);
@@ -79,7 +80,12 @@ struct ast process_command_operands(struct ast *ast, struct sep_line sep, char *
     }
     else if (is_int(sep.line[current], ast))
     {
-        if (group_count == 2 || strcmp(command, "prn") == 0)
+        if (strchr(sep.line[current], '#') != sep.line[current])
+        {
+            error_found(ast, "invalid operand, command can't receive numbers withouth #");
+            return *ast;
+        }
+        else if (group_count == 2 || strcmp(command, "prn") == 0)
         {
             set_data(ast, sep, 1);
         }
@@ -91,7 +97,7 @@ struct ast process_command_operands(struct ast *ast, struct sep_line sep, char *
     }
     if (strcmp(command, "lea") == 0 && (system_names(sep.line[current]) != LABEL || is_int(sep.line[current], ast)))
     {
-        error_found(ast, "-invalid operand");
+        error_found(ast, "invalid operand");
         return *ast;
     }
 
@@ -127,8 +133,14 @@ struct ast process_command_operands(struct ast *ast, struct sep_line sep, char *
             error_found(ast, "invalid operand, command can't receive numbers");
             return *ast;
         }
+        else if (strchr(sep.line[current], '#') != sep.line[current])
+        {
+            error_found(ast, "invalid operand, command can't receive numbers withouth #");
+            return *ast;
+        }
         else
         {
+
             set_data(ast, sep, 0);
         }
     }
@@ -179,7 +191,7 @@ void set_command(struct ast *ast, struct sep_line sep, char *command)
 struct ast line_type(struct sep_line sep, struct ast *ast)
 {
 
-    if (process_token(sep.line[FIRST_WORD], ast) == lable) /*checking if we  have label in the line*/
+    if (process_token(sep.line[FIRST_WORD], ast) == label) /*checking if we  have label in the line*/
     {
 
         if (process_token(sep.line[SECOND_WORD], ast) == instruction)

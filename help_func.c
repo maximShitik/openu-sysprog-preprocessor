@@ -41,7 +41,7 @@ struct sep_line split_line(char *line) {
     int counter = 0;
     char *token, *sep;
 
-    /*skip the white spaces in the beggining*/
+    /* Skip the white spaces at the beginning */
     while (isspace((unsigned char)*line)) {
         line++;
     }
@@ -51,8 +51,14 @@ struct sep_line split_line(char *line) {
 
     do {
         if (*token == '"') {
-            sep = strchr(token + 1, '"'); 
-            if (sep) sep++;
+            sep = token + 1;
+            while (*sep && *sep != '"') {
+                sep++;
+            }
+            if (*sep == '"') sep++;
+            while (*sep && !isspace((unsigned char)*sep) && *sep != ',') {
+                sep++;
+            }
         } else {
             sep = strpbrk(token, SPACES ",");
         }
@@ -61,13 +67,13 @@ struct sep_line split_line(char *line) {
             char temp = *sep;
             *sep = '\0';
 
-            /*storing the token*/
+            /* Storing the token */
             trim_whitespace(token);
             if (*token != '\0') {
                 separated.line[counter++] = token;
             }
 
-            /*handeling comma as a separated toekn*/
+            /* Handling comma as a separated token */
             if (temp == ',') {
                 separated.line[counter++] = ",";
                 token = sep + 1;

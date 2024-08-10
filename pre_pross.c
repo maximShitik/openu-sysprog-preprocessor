@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "data_structs.h"
-#include "data_structs.c"
+#include "data_struct_functions.c"
 #include "pre_pross.h"
 #include "help_func.h"
 #include "macros.h"
@@ -66,7 +66,7 @@ int copy_file(const char *source_file, const char *target_file)
 
     if (src == NULL || dst == NULL)
     {
-        perror("Error opening file");
+        printf("Error opening file");
         if (src)
             fclose(src);
         if (dst)
@@ -216,7 +216,7 @@ char *pre_prossesor(char *line, hash *hash_table[], char *input, line_mapping li
         return NULL;
     }
     else
-    {
+    {   remove(as_file_name);
         free(as_file_name);
         fclose(as_file);
         fclose(am_file);

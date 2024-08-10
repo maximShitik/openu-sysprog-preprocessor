@@ -21,8 +21,8 @@ int main(int argc, char **argv)
     struct translation_unit *program;
     char line[MAX_ADDRESS];
     char *am_file_name;
-    hash *hash_table[HASH_SIZE] = {0};
     FILE *am_file;
+    hash *hash_table[HASH_SIZE] = {0};
     line_mapping line_map[MAX_ADDRESS] = {0};
     int expanded_line_count = 0;
 
@@ -52,6 +52,7 @@ int main(int argc, char **argv)
             else if (first_pass(am_file_name, am_file, program, hash_table, line_map, expanded_line_count))
             {
                 /*if error flag is 1 = there is an error*/
+                fclose(am_file);
                 remove(am_file_name);
                 free_translation_unit(program);
                 free(am_file_name);

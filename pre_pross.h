@@ -24,14 +24,22 @@ enum
 int line_defenition(char *line, struct sep_line separated, char error[MAX_LINE]);
 
 /**
- * @brief Folding the as file in to the am file and folding the macros if there are any
- * 
- * @param line 
- * @param hash_table 
- * @param input 
- * @param line_map 
- * @param expanded_line_count 
- * @return char* 
+ * @brief Pre-processes an assembly file to expand macros and generate an intermediate file.
+ *
+ * This function processes the input assembly file, handling macro definitions and expansions.
+ * It generates an intermediate am file with expanded macros and retains the original lines that are not part of a macro definition.
+ * At the end of the process, the temporary .as file created earlier is deleted.
+ *
+ * @param line A buffer to store each line read from the file.
+ * @param hash_table An array of hash pointers used to store macro definitions.
+ * @param input The name of the input file to be pre-processed.
+ * @param line_map An array that maps the expanded lines to their original line numbers.
+ * @param expanded_line_count A pointer to an integer that will store the total count of expanded lines.
+ * @return The name of the generated am file, or NULL if an error occurred.
+ *
+ * @note The function dynamically allocates memory for line_copy, as_file_name, and am_file_name.
+ *       The .as file created during processing is deleted at the end of the function.
+ *       If an error occurs during processing, the function will clean up by freeing allocated memory and closing open files.
  */
 char *pre_prossesor(char *line, hash *hash_table[], char *input, line_mapping line_map[], int *expanded_line_count) ;
 
@@ -47,7 +55,7 @@ char *pre_prossesor(char *line, hash *hash_table[], char *input, line_mapping li
 void create_as_and_am_files(char *input, char **as_file_name, char **am_file_name, FILE **am_file, FILE **as_file);
 
 /**
- * @brief Copy the source file to the target file so we wont change the original file entered by user
+ * @brief Copy the source file to the target file using the fwrite function so we wont change the original file entered by user
  * 
  * @param source_file 
  * @param target_file 

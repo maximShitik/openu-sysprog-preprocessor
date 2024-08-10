@@ -14,14 +14,16 @@
 #define FALSE 0
 #define TRUE 1
 #define LABEL 1
-#define DEAFULT 0
+#define DEFAULT 0
 #define SYMBOLS "! @ # $ ^ & * ( ) _ + - = { } [ ] | \\ : ; \" ' < > , . ? / ` ~"
 #define ONE_OPCODES_COUNT 5
 #define TWO_OPCODES_COUNT 14
 #define HASH_SIZE 100
-#define MAX_LINE 83
-#define MAX_LINE_LIMIT 81
+#define MAX_LINE 81
 #define MAX_ADDRESS 1000
+#define IC_START_ADDRESS 100
+#define OB 4
+#define ENT_OR_EXT 5
 
 #define OP_CODE_SET program->code_array[program->IC] = line_ast.line_type_data.command.opcode << 11;
 #define SOURCE_METHOD_0 program->code_array[program->IC] |= 1 << 7;
@@ -67,9 +69,16 @@
     ast->line_type_data.command.opcode_type[(first)].command_type = number; \
     ast->line_type_data.command.opcode_type[(second)].numberr = (num);
 
+
+
 #define SET_REGISTER(index)  \
     ast->line_type_data.command.opcode_type[(index)].command_type = reg_direct;   \
     ast->line_type_data.command.opcode_type[(index)].regg = atoi(sep.line[current] + (strpbrk(sep.line[current], "*") ? 2 : 1)); \
     ast->line_type_data.command.opcode_type[(index)].command_type = strpbrk(sep.line[current], "*") ? reg : reg_direct;
 
+
+#define OPEN_FILE_FAIL(file_name)\
+                perror("Error creating object file");\
+                         free((file_name));\
+                          return; 
 #endif

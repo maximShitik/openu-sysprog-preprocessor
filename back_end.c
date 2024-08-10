@@ -2,8 +2,7 @@
 #ifndef BACK_END_C
 #define BACK_END_C
 
-#define OB 4
-#define ENT_OR_EXT 5
+
 
 #include "back_end.h"
 #include "macros.h"
@@ -17,7 +16,7 @@ void print_object_file(char *file_name, struct translation_unit *program)
     int i, j;
     int value;
     char *dot;
-    int line_number = 100;
+    int line_number = IC_START_ADDRESS;
     value = 0;
     object_file_name = (char *)malloc(strlen(file_name) + OB);
     if (object_file_name == NULL)
@@ -41,7 +40,7 @@ void print_object_file(char *file_name, struct translation_unit *program)
     {
         perror("Error creating object file");
         free(object_file_name);
-        exit(EXIT_FAILURE);
+        return;
     }
     fprintf(object_file, "  %d   %d\n", program->IC, program->DC);/*printing the 2 numberrs in the head*/
     for (i = 0; i < program->IC; i++)
@@ -132,7 +131,7 @@ void print_ext_file(char *file_name, struct translation_unit *program)
     {
         perror("Error creating external file");
         free(ext_file_name);
-        exit(EXIT_FAILURE);
+        return;
     }
     if (strcmp(program->ext_table->ext_name, "\0") == 0)
     {

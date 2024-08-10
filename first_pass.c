@@ -3,6 +3,7 @@
 
 #include "first_and_second_pass.h"
 #include "data_structs.h"
+#include "data_struct_functions.h"
 #include "lexer.h"
 #include "help_func.h"
 #include <stdio.h>
@@ -143,7 +144,6 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
                     memset(new_symbol, 0, sizeof(struct symbol));
                     strcpy(new_symbol->symbol_name, line_ast.label_name);
                     strcpy(new_symbol->symbol_name, line_ast.line_type_data.inst.label_array[FIRST_WORD]);
-                    new_symbol->address = line_ast.line_type == command_line ? ic : dc;
                     new_symbol->symbol_type = line_ast.line_type == command_line ? code_type : data_type;
                     new_symbol->symbol_type = (line_ast.line_type_data.inst.inst_type == entry) ? entry_type : extrn_type;
                     symbol_insert(&program->symbol_table, new_symbol);

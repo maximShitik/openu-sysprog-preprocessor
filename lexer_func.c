@@ -113,26 +113,26 @@ void reset_ast(struct ast *node)
     int i;
     i = 0;
     node->line_type = empty_line;
-    node->line_type_data.inst.inst_type = DEAFULT;
+    node->line_type_data.inst.inst_type = DEFAULT;
 
     reset_string_array(node->line_type_data.inst.label_array, LABEL_ARRAY_SIZE);
     reset_string_array(node->line_type_data.inst.string_array, STRING_ARRAY_SIZE);
-    node->line_type_data.command.opcode = DEAFULT;
-    memset(node->line_type_data.inst.data_array, DEAFULT,
+    node->line_type_data.command.opcode = DEFAULT;
+    memset(node->line_type_data.inst.data_array, DEFAULT,
            sizeof(node->line_type_data.inst.data_array));
 
     for (i = 0; i < 2; i++)
     {
         node->line_type_data.command.opcode_type[i].command_type = none;
         reset_string_array(node->line_type_data.command.opcode_type[i].labell, STRING_ARRAY_SIZE);
-        node->line_type_data.command.opcode_type[i].numberr = DEAFULT;
-        node->line_type_data.command.opcode_type[i].regg = DEAFULT;
+        node->line_type_data.command.opcode_type[i].numberr = DEFAULT;
+        node->line_type_data.command.opcode_type[i].regg = DEFAULT;
     }
-    memset(node->error.type, DEAFULT, sizeof(node->error.type));
-    memset(node->label_name, DEAFULT, sizeof(node->label_name));
-    node->line_type_data.inst.data_counter = DEAFULT;
+    memset(node->error.type, DEFAULT, sizeof(node->error.type));
+    memset(node->label_name, DEFAULT, sizeof(node->label_name));
+    node->line_type_data.inst.data_counter = DEFAULT;
     node->are.are_type = A;
-    node->argument_count = DEAFULT;
+    node->argument_count = DEFAULT;
 }
 
 int check_command_or_instruction(struct ast *ast)
@@ -151,7 +151,8 @@ int check_command_or_instruction(struct ast *ast)
 int is_int(char *line, struct ast *ast)
 {
     char *endptr;
-    if (*line == '+' || *line == '-' || *line == '#')
+
+    if (*line == '+' || *line == '#')
     {
         line++;
         if (!strtol(line, &endptr, 10)) /*cheking if the next sign is a number*/
@@ -214,7 +215,7 @@ struct ast set_data(struct ast *ast, struct sep_line sep, int first_operand)
             {
                 if (PRN_AND_ONE_OPERAND(==)) /*prn can only resive numbers in the second place*/
                 {
-                    SET_NUMBER(SECOND_WORD, SECOND_WORD,int_num)
+                    SET_NUMBER(SECOND_WORD, SECOND_WORD, int_num)
                 }
                 else if (PRN_AND_ONE_OPERAND(!=))
                 {
@@ -223,18 +224,30 @@ struct ast set_data(struct ast *ast, struct sep_line sep, int first_operand)
                 }
                 else
                 {
-                    if (first_operand)
+                    if (first_operand) /*if its the first operand in the line*/
                     {
-                        SET_NUMBER(j, j,int_num)
+                        SET_NUMBER(j, j, int_num)
                         return *ast;
                     }
 
-                    else
+                    else /*if its the second */
                     {
-                        
-                        SET_NUMBER(j, j,int_num)
+                        if (sep.line[i + 1] == NULL) /*check if we are the last operand in a line with 2 numbers*/
+                        {
+                            if (j == 0) /*if the argument before us wasnt a number */
+                            {
+                                j++;
+                                SET_NUMBER(j, j, int_num)
+                            }
+
+                            else /*if the argument before us was a number*/
+                            {
+                                SET_NUMBER(j, j, int_num)
+                            }
+                            return *ast;
+                        }
+                        SET_NUMBER(j, j, int_num)
                         j++;
-                        
                     }
                 }
             }
@@ -307,6 +320,7 @@ struct ast set_string(struct ast *ast, struct sep_line sep)
     }
     ast->line_type_data.inst.data_counter = j;
     ast->line_type_data.inst.inst_type = string;
+
     return *ast;
 }
 
@@ -410,32 +424,33 @@ struct ast set_label(struct ast *ast, struct sep_line sep, int index)
     }
     if (ast->line_type == inst_line)
     {
-        if (ast->line_type_data.inst.label_array[0] == NULL) /*chking if we are the first operand or the second*/
+        if (ast->line_type_data.inst.label_array[FIRST_WORD] == NULL) /*chking if we are the first operand or the second*/
         {
 
-            ast->line_type_data.inst.label_array[0] = sep.line[index];
-            ast->line_type_data.inst.label_array[1] = NULL;
+            ast->line_type_data.inst.label_array[FIRST_WORD] = sep.line[index];
+            ast->line_type_data.inst.label_array[SECOND_WORD] = NULL;
         }
 
         else
         {
-            ast->line_type_data.inst.label_array[1] = sep.line[index];
+            ast->line_type_data.inst.label_array[SECOND_WORD] = sep.line[index];
         }
     }
 
     else if (ast->line_type == command_line)
     {
-
-        if (ast->line_type_data.command.opcode_type[0].command_type != none) /*chking if we are the first operand or the second*/
+            /*chking if we are the first operand or the second
+            if we in the command group of 2 operdands the label will be set in the second array*/
+        if (ast->line_type_data.command.opcode_type[FIRST_WORD].command_type != none || ast->line_type_data.command.opcode > lea) 
         {
 
-            ast->line_type_data.command.opcode_type[1].command_type = label;
-            ast->line_type_data.command.opcode_type[1].labell[0] = sep.line[index];
+            ast->line_type_data.command.opcode_type[SECOND_WORD].command_type = lable;
+            ast->line_type_data.command.opcode_type[SECOND_WORD].labell[FIRST_WORD] = sep.line[index];
         }
         else
         {
-            ast->line_type_data.command.opcode_type[0].command_type = label;
-            ast->line_type_data.command.opcode_type[0].labell[0] = sep.line[index];
+            ast->line_type_data.command.opcode_type[FIRST_WORD].command_type = lable;
+            ast->line_type_data.command.opcode_type[FIRST_WORD].labell[FIRST_WORD] = sep.line[index];
         }
     }
 
