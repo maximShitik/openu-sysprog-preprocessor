@@ -68,11 +68,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
             }
             else
             {
-                new_symbol = (struct symbol *)malloc(sizeof(struct symbol));
-                strcpy(new_symbol->symbol_name, line_ast.label_name);
-                new_symbol->address = line_ast.line_type == command_line ? ic : dc;
-                new_symbol->symbol_type = line_ast.line_type == command_line ? code_type : data_type;
-                symbol_insert(&program->symbol_table, new_symbol);
+                    symbol_insert(&program->symbol_table, new_symbol, line_ast, program, ic, dc);
             }
         }
 
@@ -141,12 +137,8 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
                     {
                       MEMORY_FAIL
                     }
-                    memset(new_symbol, 0, sizeof(struct symbol));
-                    strcpy(new_symbol->symbol_name, line_ast.label_name);
-                    strcpy(new_symbol->symbol_name, line_ast.line_type_data.inst.label_array[FIRST_WORD]);
-                    new_symbol->symbol_type = line_ast.line_type == command_line ? code_type : data_type;
-                    new_symbol->symbol_type = (line_ast.line_type_data.inst.inst_type == entry) ? entry_type : extrn_type;
-                    symbol_insert(&program->symbol_table, new_symbol);
+                    
+                    symbol_insert(&program->symbol_table, new_symbol, line_ast, program, ic, dc);
                 }
                 else /* If defined a label as entry and extern in the same file  */
                 {

@@ -148,11 +148,20 @@ struct symbol *symbol_search(struct symbol *head, char *name);
 
 /**
  * @brief Inserts a new symbol into the symbol table.
- *  * 
+ *
+ * This function initializes a new symbol and inserts it into the symbol table based on the provided AST and other parameters.
+ * It handles both instruction lines and labels, setting the symbol's properties accordingly.
+ *
  * @param head Pointer to the head of the symbol list.
- * @param new_symbol Pointer to the new symbol to insert.
+ * @param new_symbol Pointer to the symbol to be initialized and inserted.
+ * @param ast The abstract syntax tree containing the parsed line data.
+ * @param program Pointer to the translation unit containing the symbol table.
+ * @param ic The current instruction counter.
+ * @param dc The current data counter.
+ *
+ * @return The updated translation unit with the new symbol inserted.
  */
-void symbol_insert(struct symbol **head, struct symbol *new_symbol);
+struct translation_unit symbol_insert(struct symbol **head, struct symbol *new_symbol, struct ast ast, struct translation_unit *program, int ic, int dc);
 
 
 /**
@@ -193,5 +202,15 @@ void add_extr(struct translation_unit *program, char *symbol_name, int address);
 struct ext *ext_search(struct ext *head, char *name);
 
 
+/**
+ * @brief Sorts a linked list of entries by their address in ascending order.
+ *
+ * This function iterates through the linked list of entries and sorts them
+ * in place based on the addres field in ascending order.
+ * The sorting algorithm used is bubble sort.
+ *
+ * @param head A pointer to the head pointer of the linked list to be sorted.
+ */
+void sort_entries_by_address(struct entry **head);
 
 #endif
