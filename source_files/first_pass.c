@@ -29,9 +29,9 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
     while (fgets(line, sizeof(line), am_file))
     {
         original_line_number = line_map[expanded_line_number].original_line_number;
-        if (strlen(line) > 80)
+        if (strlen(line) > MAX_LINE)
         {
-            printf("Error in line %d: line is too long\n", original_line_number);
+            printf("First pass error in line %d: line is too long\n", original_line_number);
             is_error = 1;
             expanded_line_number++;
             continue;
@@ -40,7 +40,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
 
         if (line_ast.line_type == error_line)
         {
-            printf("Syntax error in line %d: %s\n", original_line_number, line_ast.error.type);
+            printf("First pass error syntax error in line %d: %s\n", original_line_number, line_ast.error.type);
             is_error = 1;
             expanded_line_number++;
             continue;
@@ -60,7 +60,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
                 }
                 else /* If the name is not entry and we already have it in the table */
                 {
-                    printf("Error in %s line %d: %s is already defined \n", file_name, original_line_number, line_ast.label_name);
+                    printf("First pass error in %s line %d: %s is already defined \n", file_name, original_line_number, line_ast.label_name);
                     is_error = 1;
                     expanded_line_number++;
                     continue;
@@ -68,7 +68,7 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
             }
             else
             {
-                    symbol_insert(&program->symbol_table, new_symbol, line_ast, program, ic, dc);
+                symbol_insert(&program->symbol_table, new_symbol, line_ast, program, ic, dc);
             }
         }
 
@@ -112,8 +112,8 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
             /*checking if we have the entry / extern in the symbol table , if not we will set it as entry/extern without intilization*/
             else if (line_ast.line_type_data.inst.inst_type == entry || line_ast.line_type_data.inst.inst_type == extrn)
             {
-                symbol_found = symbol_search(program->symbol_table, line_ast.line_type_data.inst.label_array[0]);
-                if (symbol_found && line_ast.line_type_data.inst.inst_type == entry) /*if we have the symbol in the table and it's an entry we will 
+                symbol_found = symbol_search(program->symbol_table, line_ast.line_type_data.inst.label_array[FIRST_WORD]);
+                if (symbol_found && line_ast.line_type_data.inst.inst_type == entry) /*if we have the symbol in the table and it's an entry we will
                                                                                                 update it's type to be entry withintilization */
                 {
                     if (symbol_found->symbol_type == code_type)
@@ -125,24 +125,24 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
                         symbol_found->symbol_type = entry_data_type;
                     }
                     else
-                    {
-                        printf("Error in %s line %d: %s is already defined \n", file_name, original_line_number, line_ast.line_type_data.inst.label_array[0]);
+                    { /*if we declare the same symbole as entry / exter more then 1 time*/
+                        printf("First pass error in %s line %d: %s declared as %s more than 1 time in the same file\n", file_name, original_line_number, line_ast.line_type_data.inst.label_array[FIRST_WORD], symbol_found->symbol_type == entry_data_type ? "entry" : "extern");
                         is_error = 1;
                     }
                 }
-                else if (!symbol_found)/*addeing the entry/ extern to the table as entry/extern without intilization */
+                else if (!symbol_found) /*addeing the entry/ extern to the table as entry/extern without intilization */
                 {
                     new_symbol = (struct symbol *)malloc(sizeof(struct symbol));
                     if (new_symbol == NULL)
                     {
-                      MEMORY_FAIL
+                        MEMORY_FAIL
                     }
-                    
+
                     symbol_insert(&program->symbol_table, new_symbol, line_ast, program, ic, dc);
                 }
                 else /* If defined a label as entry and extern in the same file  */
                 {
-                    printf("Error in %s line %d: %s is already defined \n", file_name, original_line_number, line_ast.line_type_data.inst.label_array[0]);
+                    printf("First pass error in %s line %d: %s is already defined as %s \n", file_name, original_line_number, line_ast.line_type_data.inst.label_array[FIRST_WORD], symbol_found->symbol_type == entry_data_type ? "entry" : "extern");
                     is_error = 1;
                 }
             }
@@ -151,11 +151,11 @@ int first_pass(char *file_name, FILE *am_file, struct translation_unit *program,
     }
 
     current = program->symbol_table;
-    while (current != NULL)/*setting the data in the end lines to be printed last in the ob file*/
+    while (current != NULL) /*setting the data in the end lines to be printed last in the ob file*/
     {
-        if (current->symbol_type == entry_type && !is_error)
+        if (current->symbol_type == entry_type )
         {
-            printf("Error in %s: %s\n", file_name, "label already defined as entry and never received data");
+            printf("First pass error %s line %d: %s\n", file_name,original_line_number, "label defined as entry and never received data");
             is_error = 1;
         }
         if (current->symbol_type == data_type || current->symbol_type == entry_data_type)

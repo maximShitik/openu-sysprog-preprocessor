@@ -151,9 +151,15 @@ int check_command_or_instruction(struct ast *ast)
 int is_int(char *line, struct ast *ast)
 {
     char *endptr;
+    int temp;
 
     if (*line == '+' || *line == '#')
     {
+        if (ast->line_type == inst_line && *line == '#')
+        {
+            error_found(ast, "instruction cant recive # with data");
+            return FALSE;
+        }
         line++;
         if (!strtol(line, &endptr, 10)) /*cheking if the next sign is a number*/
         {
@@ -161,14 +167,30 @@ int is_int(char *line, struct ast *ast)
             return FALSE;
         }
     }
+    if (*line == '-')
+    {
+        line++;
+        if (strtol(line, &endptr, 10) > MAX_DATA || strtol(line, &endptr, 10) < MIN_DATA)
+        {
+            error_found(ast, "value out of range");
+            return FALSE;
+        }
+        else
+            line--;
+    }
 
     if (strchr(line, '.') != NULL && strcmp(line, ".data") != 0)
     {
         error_found(ast, "error-invalid number");
         return FALSE;
     }
-
-    return strtol(line, &endptr, 10); /*returning the result of the converting to a number*/
+    temp = strtol(line, &endptr, 10); /*returning the result of the converting to a number*/
+    if (temp > MAX_DATA || temp < MIN_DATA)
+    {
+        error_found(ast, "value out of range");
+        return FALSE;
+    }
+    return temp;
 }
 
 int is_string(char *line, struct ast *ast)
@@ -190,14 +212,18 @@ int is_string(char *line, struct ast *ast)
 
 struct ast set_data(struct ast *ast, struct sep_line sep, int first_operand)
 {
-    int i, j;
-    int int_num;
-    int_num = 0;
-    j = 0;
+    int i, j = 0, int_num;
+    int count = 0;
+
     for (i = 0; i < sep.line_number; i++)
     {
-        int_num = is_int(sep.line[i], ast);
-        if (int_num)
+        if (ast->label_name[0] != '\0' && count == 0)
+        {
+            count++;
+            i = 1;
+        }
+
+        if ((int_num = is_int(sep.line[i], ast)))
         {
             if ((i + 1) < sep.line_number && is_int(sep.line[i + 1], ast))
             {
@@ -213,66 +239,74 @@ struct ast set_data(struct ast *ast, struct sep_line sep, int first_operand)
             }
             else if (check_command_or_instruction(ast) == command)
             {
-                if (PRN_AND_ONE_OPERAND(==)) /*prn can only resive numbers in the second place*/
+                if (int_num > MAX_COMMAND_VALUE || int_num < MIN_COMMAND_VALUE)
                 {
-                    SET_NUMBER(SECOND_WORD, SECOND_WORD, int_num)
+                    error_found(ast, "value out of range");
+                    return *ast;
+                }
+
+                if (PRN_AND_ONE_OPERAND(==))
+                {
+                    SET_NUMBER(SECOND_WORD, SECOND_WORD, int_num);
                 }
                 else if (PRN_AND_ONE_OPERAND(!=))
                 {
-                    error_found(ast, "prn can resive only one number as target operand");
+                    error_found(ast, "prn can receive only one number as target operand");
                     return *ast;
                 }
                 else
                 {
-                    if (first_operand) /*if its the first operand in the line*/
+                    if (first_operand)
                     {
-                        SET_NUMBER(j, j, int_num)
+                        SET_NUMBER(j, j, int_num);
                         return *ast;
                     }
-
-                    else /*if its the second */
+                    else
                     {
-                        if (sep.line[i + 1] == NULL) /*check if we are the last operand in a line with 2 numbers*/
+                        if (sep.line[i + 1] == NULL)
                         {
-                            if (j == 0) /*if the argument before us wasnt a number */
+                            if (j == 0)
                             {
                                 j++;
-                                SET_NUMBER(j, j, int_num)
                             }
-
-                            else /*if the argument before us was a number*/
-                            {
-                                SET_NUMBER(j, j, int_num)
-                            }
+                            SET_NUMBER(j, j, int_num);
                             return *ast;
                         }
-                        SET_NUMBER(j, j, int_num)
-                        j++;
+                        SET_NUMBER(j++, j, int_num);
                     }
                 }
             }
         }
 
-        /*checking for lexical errors*/
-        else if (strcmp(sep.line[i], ",") == 0)
+        if (ast->error.type[0] != '\0')
         {
-            if ((i + 1) < sep.line_number && strcmp(sep.line[i + 1], ",") == 0)
+            return *ast;
+        }
+        if (ast->line_type == inst_line)
+        {
+            if (strcmp(sep.line[i], ",") == 0)
             {
-                error_found(ast, "too many commas");
+                if ((i + 1) < sep.line_number && strcmp(sep.line[i + 1], ",") == 0)
+                {
+                    error_found(ast, "too many commas");
+                    return *ast;
+                }
+                if ((i + 1) < sep.line_number && is_int(sep.line[i + 1], ast) && !is_int(sep.line[i - 1], ast))
+                {
+                    error_found(ast, "comma before first number");
+                    return *ast;
+                }
+                if (sep.line[i + 1] == NULL)
+                {
+                    error_found(ast, "comma after last number");
+                    return *ast;
+                }
+            }
+            else if ((i + 1) < sep.line_number && !is_int(sep.line[i], ast) && check_command_or_instruction(ast) == instruction && strcmp(sep.line[i], ".data") != 0)
+            {
+                error_found(ast, "invalid operand at data");
                 return *ast;
             }
-            else
-                continue;
-        }
-        else if ((i + 1) < sep.line_number && (!is_int(sep.line[i], ast) && strcmp(sep.line[i + 1], ",") == 0) && check_command_or_instruction(ast) == instruction)
-        {
-            error_found(ast, "comma before first number");
-            return *ast;
-        }
-        else if (strcmp(sep.line[sep.line_number - 1], ",") == 0)
-        {
-            error_found(ast, "comma after last number");
-            return *ast;
         }
     }
     return *ast;
@@ -304,18 +338,21 @@ struct ast set_string(struct ast *ast, struct sep_line sep)
             ast->line_type_data.inst.string_array[j] = (char *)malloc(2 * sizeof(char));
             if (ast->line_type_data.inst.string_array[j] == NULL)
             {
+                free_string_array(ast->line_type_data.inst.string_array, j);
                 error_found(ast, "memory allocation error");
-                return *ast;
+                if (j > 0)
+
+                    return *ast;
             }
             ast->line_type_data.inst.string_array[j][FIRST_WORD] = string_start[k];
             ast->line_type_data.inst.string_array[j][SECOND_WORD] = '\0';
             j++;
         }
     }
-    if (i + 1 < sep.line_number && is_string(sep.line[i + 1], ast))
+    if (i + 1 < sep.line_number && (is_string(sep.line[i + 1], ast) || strcmp(sep.line[i + 1], ",") == 0))
     {
-        error_found(ast, "error-too many strings");
-        free(ast->line_type_data.inst.string_array[j]);
+        free_string_array(ast->line_type_data.inst.string_array, j);
+        error_found(ast, "too many strings");
         return *ast;
     }
     ast->line_type_data.inst.data_counter = j;
@@ -388,7 +425,11 @@ struct ast set_entry_extern(struct ast *ast, struct sep_line sep)
         ast->label_name[0] = '\0'; /*setting only the first letter to \0 so we will not use the name*/
         return *ast;
     }
-
+    if (sep.line_number > 2)
+    {
+        error_found(ast, "too many arguments");
+        return *ast;
+    }
     /*handling case if we dont have label*/
     if (strcmp(sep.line[0], ".entry") == 0 || strcmp(sep.line[0], "entry") == 0)
     {
@@ -439,9 +480,9 @@ struct ast set_label(struct ast *ast, struct sep_line sep, int index)
 
     else if (ast->line_type == command_line)
     {
-            /*chking if we are the first operand or the second
-            if we in the command group of 2 operdands the label will be set in the second array*/
-        if (ast->line_type_data.command.opcode_type[FIRST_WORD].command_type != none || ast->line_type_data.command.opcode > lea) 
+        /*chking if we are the first operand or the second
+        if we in the command group of 2 operdands the label will be set in the second array*/
+        if (ast->line_type_data.command.opcode_type[FIRST_WORD].command_type != none || ast->line_type_data.command.opcode > lea)
         {
 
             ast->line_type_data.command.opcode_type[SECOND_WORD].command_type = lable;

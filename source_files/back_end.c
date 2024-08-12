@@ -2,8 +2,6 @@
 #ifndef BACK_END_C
 #define BACK_END_C
 
-
-
 #include "back_end.h"
 #include "macros.h"
 
@@ -42,10 +40,10 @@ void print_object_file(char *file_name, struct translation_unit *program)
         free(object_file_name);
         return;
     }
-    fprintf(object_file, "  %d   %d\n", program->IC, program->DC);/*printing the 2 numberrs in the head*/
+    fprintf(object_file, " %d   %d\n", program->IC, program->DC);/*printing the 2 numberrs in the head*/
     for (i = 0; i < program->IC; i++)
     {
-        fprintf(object_file, "%04d ", line_number);
+        fprintf(object_file, "%04d  ", line_number);
 
         value = program->code_array[i];
 
@@ -68,7 +66,7 @@ void print_object_file(char *file_name, struct translation_unit *program)
 
     for (i = 0; i < program->DC; i++)
     {
-        fprintf(object_file, "%04d ", line_number);
+        fprintf(object_file, "%04d  ", line_number);
 
         value = program->data_array[i];
 
@@ -199,7 +197,6 @@ void print_entry_file(char *file_name, struct translation_unit *program)
         free(entry_file_name);
         exit(EXIT_FAILURE);
     }
-
     current_entry = program->entry_table;
     while (current_entry != NULL)
     {

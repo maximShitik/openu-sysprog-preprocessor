@@ -321,7 +321,7 @@ struct translation_unit symbol_insert(struct symbol **head, struct symbol *new_s
 {
   
 
-    if (ast.label_name[0] == '\0')/*if we dont have label name in the begining of the line and its an istruction line*/
+    if (ast.label_name[0] == '\0')/*if we dont have label name in the begining of the line and its an istruction*/
 
     {
         memset(new_symbol, 0, sizeof(struct symbol));

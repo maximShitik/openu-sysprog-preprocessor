@@ -11,8 +11,13 @@
 
 int line_defenition(char *line, struct sep_line separated, char error[MAX_LINE])
 {
-    if (strcmp(separated.line[0], "macr") == 0)
+    if (strcmp(separated.line[FIRST_WORD], "macr") == 0)
     {
+        if (separated.line_number > 2)
+        {
+            strcpy(error, "macro definition should not contain any other words\n");
+            return Error;
+        }
         if (strpbrk(line, ",") != NULL)
         {
             strcpy(error, " macro definition should not contain a comma\n");
@@ -24,7 +29,7 @@ int line_defenition(char *line, struct sep_line separated, char error[MAX_LINE])
             strcpy(error, "macro definition should contain a name\n");
             return Error;
         }
-        else if (system_names(separated.line[1]) != TRUE)
+        else if (system_names(separated.line[SECOND_WORD]) != TRUE)
         {
 
             strcpy(error, " macro name is a system name\n");
@@ -32,10 +37,10 @@ int line_defenition(char *line, struct sep_line separated, char error[MAX_LINE])
         }
         else
         {
-            return hash_function(separated.line[1]);
+            return hash_function(separated.line[SECOND_WORD]);
         }
     }
-    else if (strcmp(separated.line[0], "endmacr") == 0)
+    else if (strcmp(separated.line[FIRST_WORD], "endmacr") == 0)
     {
         if (separated.line_number > 1)
         {
@@ -44,6 +49,7 @@ int line_defenition(char *line, struct sep_line separated, char error[MAX_LINE])
 
             return Error;
         }
+
         else
         {
             return endmacro;
@@ -160,7 +166,7 @@ char *pre_prossesor(char *line, hash *hash_table[], char *input, line_mapping li
 
         if (name_index == Error)
         {
-            printf("Error in pre-prossesor: %s in line %d \n", error, original_line_number);
+            printf("Error in pre-prossesor in %s in line %d: %s  \n", am_file_name, original_line_number,error);
             error_flag = 1;
         }
         else if (name_index >= min_hash_index)
@@ -216,7 +222,9 @@ char *pre_prossesor(char *line, hash *hash_table[], char *input, line_mapping li
         return NULL;
     }
     else
-    {   remove(as_file_name);
+
+    {
+        remove(as_file_name);
         free(as_file_name);
         fclose(as_file);
         fclose(am_file);

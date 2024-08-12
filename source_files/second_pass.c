@@ -136,7 +136,7 @@ int second_pass(char *file_name, FILE *am_file, struct translation_unit *program
                         }
                         else
                         {
-                            printf("Error in line %d: %s is undefined label \n", original_line_number, line_ast.line_type_data.command.opcode_type[i].labell[0]);
+                            printf("Second pass in line %d: %s is undefined label \n", original_line_number, line_ast.line_type_data.command.opcode_type[i].labell[0]);
                             is_error = 1;
                         }
                     }

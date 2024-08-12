@@ -74,7 +74,7 @@ struct ast process_command_operands(struct ast *ast, struct sep_line sep, char *
         }
         if (JMP_BNE_JSR && ast->line_type_data.command.opcode_type[SECOND_WORD].command_type == reg_direct)
         {
-            error_found(ast, "invalid operand, command can't receive registers");
+            error_found(ast, "invalid operand, command can't receive direct registers");
             return *ast;
         }
     }
@@ -91,7 +91,7 @@ struct ast process_command_operands(struct ast *ast, struct sep_line sep, char *
         }
         else
         {
-            error_found(ast, "invalid operand, only prn can receive numbers");
+            error_found(ast, "invalid operand, only prn and cmp can receive numbers as target operand");
             return *ast;
         }
     }

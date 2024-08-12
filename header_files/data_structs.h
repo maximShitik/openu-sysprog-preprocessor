@@ -195,7 +195,7 @@ typedef struct ast
      */
     struct
     {
-        char type[MAX_DATA]; 
+        char type[MAX_LINE]; 
     } error;
 
     /**

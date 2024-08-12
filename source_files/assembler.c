@@ -14,7 +14,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 int main(int argc, char **argv)
 {
     int i;
@@ -42,9 +41,8 @@ int main(int argc, char **argv)
 
             if (am_file == NULL)
             {
-                free_translation_unit(program);
-                free(am_file_name);
-                free_hash(hash_table);
+                remove(am_file_name);
+                FREE_ALL_STRUCTS
                 fprintf(stderr, "Error: failed to open file %s\n", am_file_name);
                 continue;
             }
@@ -52,11 +50,8 @@ int main(int argc, char **argv)
             else if (first_pass(am_file_name, am_file, program, hash_table, line_map, expanded_line_count))
             {
                 /*if error flag is 1 = there is an error*/
-                fclose(am_file);
                 remove(am_file_name);
-                free_translation_unit(program);
-                free(am_file_name);
-                free_hash(hash_table);
+                FREE_ALL_STRUCTS
                 continue;
             }
             else
@@ -65,9 +60,7 @@ int main(int argc, char **argv)
                 if (second_pass(am_file_name, am_file, program, hash_table, line_map, expanded_line_count))
                 {
                     remove(am_file_name);
-                    free_translation_unit(program);
-                    free(am_file_name);
-                    free_hash(hash_table);
+                    FREE_ALL_STRUCTS
                     continue;
                 }
                 else
@@ -75,20 +68,17 @@ int main(int argc, char **argv)
                     printing_files(am_file_name, program);
                 }
             }
-            fclose(am_file);
-            free_translation_unit(program);
-            free(am_file_name);
-            free_hash(hash_table);
+            printf("\n %s was processed successfully \n", am_file_name);
+            FREE_ALL_STRUCTS
         }
         else
         {
-            fclose(am_file);
-            free(am_file_name);
-            free_hash(hash_table);
-            free_translation_unit(program);
             remove(am_file_name);
+            free_translation_unit(program);
+            free(am_file_name);
         }
     }
+    printf("Done\n");
     return 0;
 }
 
